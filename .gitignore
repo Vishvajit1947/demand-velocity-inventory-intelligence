@@ -1,26 +1,17 @@
-# ── Raw M5 data: too large for GitHub (>100 MB). Keep calendar.csv (small, needed at runtime).
+# raw M5 data (too large for GitHub) — keep calendar.csv (small, needed at runtime)
 data/raw/*
 !data/raw/calendar.csv
-# The original dataset folder (large CSVs) — keep out of the repo.
-Walmart Dataset/
-
-# ── Private documents (interns' personal appointment letters) — must NOT be public.
+# private documents
 official_docs/
-
-# ── Python
+# python
 __pycache__/
 *.pyc
 .venv/
 venv/
 .pytest_cache/
-*.egg-info/
-
-# ── Node / frontend
+# node / frontend
 node_modules/
 frontend/dist/
-
-# ── Env / secrets / OS
+# env / secrets
 .env
 *.local
-.DS_Store
-Thumbs.db
