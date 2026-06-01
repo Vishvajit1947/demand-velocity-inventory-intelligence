@@ -1,0 +1,30 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html,
+  body,
+  #root {
+    margin: 0;
+    min-height: 100%;
+  }
+  html {
+    color-scheme: dark;
+    background-color: #070b14; /* --bg-base: dark-first paint before React mounts (06 §1) */
+    color: #e8eef9; /* --text-primary */
+  }
+  body {
+    @apply bg-base text-text-primary font-sans;
+    font-size: 14px; /* 06 §2 base >= 14 */
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  /* Tabular numerics for KPIs/axes use the mono family (06 §2) */
+  .tabular {
+    @apply font-mono;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* tokens.css (MT-30) is imported in main.tsx once it exists. */

@@ -1,0 +1,8 @@
+# build / cache
+dist/
+node_modules/
+*.tsbuildinfo
+.vite/
+# local env (also covered by root .gitignore)
+.env
+.env.local
