@@ -1,19 +1,12 @@
-# Demand Velocity & Inventory Intelligence — backend runtime + dev dependencies
-# Python 3.11 (create a 3.11 venv; do NOT use the system 3.14 — LightGBM pins target 3.11).
-# Install:  pip install -r requirements.txt
-# Versions are pinned so the committed model.pkl reproduces exactly.
-
 fastapi==0.115.6
 uvicorn[standard]==0.34.0
 pydantic==2.10.4
 pandas==2.2.3
 numpy==2.1.3
 pyarrow==18.1.0
-lightgbm==4.6.0          # the committed model.pkl was trained with this version
-scikit-learn==1.6.0
+lightgbm==4.5.0         # the committed model.pkl was trained with this version
+scikit-learn==1.6.0     # metrics helpers (pearsonr via scipy alternative ok)
 scipy==1.15.0
-python-dateutil==2.9.0.post0
-
-# --- dev / test ---
-pytest==8.3.4
-httpx==0.28.1
+python-dateutil==2.9.0
+pytest==8.3.4           # dev/test
+httpx==0.28.1           # test client for FastAPI

@@ -7,7 +7,7 @@ import pandas as pd
 import numpy as np
 from app.config import CALENDAR_PATH, D1_DATE
 
-_D1 = date.fromisoformat(D1_DATE)
+_D1 = D1_DATE
 _EVENT_COLS = ("event_name_1", "event_type_1", "event_name_2", "event_type_2")
 
 
