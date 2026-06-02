@@ -114,6 +114,7 @@ PATHS = {
 # 6. App metadata
 # ---------------------------------------------------------------------------
 API_VERSION = "1.0.0"                  # /api/health version (05 §2)
+VERSION = API_VERSION                  # alias expected by MT-22/MT-24 (05 §2)
 CORS_ORIGINS = ["http://localhost:5173"]  # Vite dev server (05 §1, 04 §3)
 
 # ---------------------------------------------------------------------------
