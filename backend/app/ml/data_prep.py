@@ -4,9 +4,16 @@ The output parquet is committed; students never need the raw CSVs.
 """
 from __future__ import annotations
 import pandas as pd
-from app.config import (DATA_RAW, SERIES_DAILY_PATH, PRODUCTS, ITEM_TO_SERIES, TEST_END_D)
+from app.config import (DATA_RAW, SERIES_DAILY_PATH, PRODUCTS, TEST_END_D)
+
+# Derived from PRODUCTS: item_id -> series_id mapping.
+ITEM_TO_SERIES = {meta["item_id"]: sid for sid, meta in PRODUCTS.items()}
+
+# MT-12 tests import OUTPUT_PARQUET from this module (04_BACKEND_ARCHITECTURE §1).
+OUTPUT_PARQUET = SERIES_DAILY_PATH
 
 ITEM_IDS = list(ITEM_TO_SERIES.keys())
+
 
 
 def build_series_daily() -> pd.DataFrame:

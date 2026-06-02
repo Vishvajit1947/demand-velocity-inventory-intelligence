@@ -1,43 +1,76 @@
-"""Tests for app.ml.features — column contract, no leakage, batch/single-row consistency."""
-import numpy as np
-from app.config import TRAIN_END_D
-from app.ml.features import (FEATURES, CATEGORICAL_FEATURES, build_feature_matrix,
-                             build_single_row, train_mean_prices)
-from tests.conftest import needs_artifacts
+"""MT-12 tests — build_features() contract & leakage (03_ALGORITHM_SPEC §3)."""
+import pandas as pd
+import pytest
+
+from app.ml.data_prep import OUTPUT_PARQUET
+from app.ml.features import CATEGORICAL_FEATURES, FEATURES, build_features
 
 
-@needs_artifacts
-def test_feature_columns_and_dtypes(series_daily):
-    df = build_feature_matrix(series_daily, TRAIN_END_D)
-    for c in FEATURES:
-        assert c in df.columns
-    # no NaN in features for rows with full history
-    rows = df[df["d_index"] >= 29]
-    assert rows[FEATURES].isna().sum().sum() == 0
+@pytest.fixture(scope="module")
+def series_daily() -> pd.DataFrame:
+    return pd.read_parquet(OUTPUT_PARQUET, engine="pyarrow")
 
 
-@needs_artifacts
-def test_no_leakage_lag1(series_daily):
-    df = build_feature_matrix(series_daily, TRAIN_END_D)
-    one = df[(df["series_id"] == "milk")].sort_values("d_index")
-    # lag_1 at day t equals units at day t-1
-    u = dict(zip(one["d_index"], one["units"]))
-    sample = one[one["d_index"] == 800].iloc[0]
-    assert abs(sample["lag_1"] - u[799]) < 1e-6
+@pytest.fixture(scope="module")
+def feats(series_daily: pd.DataFrame) -> pd.DataFrame:
+    return build_features(series_daily)
 
 
-@needs_artifacts
-def test_batch_single_row_consistency(series_daily):
-    """build_single_row must reproduce the batch features for an all-actual day."""
-    df = build_feature_matrix(series_daily, TRAIN_END_D)
-    tmean = train_mean_prices(series_daily, TRAIN_END_D)
-    s, d = "turkey", 1300
-    g = series_daily[series_daily["series_id"] == s]
-    u = dict(zip(g["d_index"], g["units"].astype(float)))
-    price = dict(zip(g["d_index"], g["sell_price"].astype(float)))
-    last_price = price[d]
-    row = build_single_row(s, d, {k: v for k, v in u.items() if k < d}, last_price, tmean[s])
-    batch = df[(df["series_id"] == s) & (df["d_index"] == d)].iloc[0]
-    for f in ("lag_1", "lag_7", "lag_28", "roll_mean_7", "roll_mean_28", "roll_std_7",
-              "roll_mean_7_by_wday", "snap_count", "days_to_next_event"):
-        assert abs(float(row[f]) - float(batch[f])) < 1e-5, f"{f} mismatch"
+def test_columns_exact_order(feats: pd.DataFrame):
+    # FEATURES in exact order, with d_index helper trailing; units (target) not present.
+    assert list(feats.columns) == FEATURES + ["d_index"]
+    assert "units" not in feats.columns
+
+
+def test_categoricals_are_category_dtype(feats: pd.DataFrame):
+    for col in CATEGORICAL_FEATURES:
+        assert str(feats[col].dtype) == "category", col
+
+
+def test_non_categoricals_are_numeric(feats: pd.DataFrame):
+    numeric = [c for c in FEATURES if c not in CATEGORICAL_FEATURES]
+    for col in numeric:
+        assert pd.api.types.is_numeric_dtype(feats[col]), col
+
+
+def test_lag1_equals_prev_units_no_same_day_leakage(series_daily: pd.DataFrame,
+                                                    feats: pd.DataFrame):
+    # For a known series, lag_1 at day t must equal actual units at t-1 (strictly backward).
+    sd = series_daily[series_daily["series_id"] == "turkey"].sort_values("d_index")
+    units_by_d = dict(zip(sd["d_index"].tolist(), sd["units"].tolist()))
+
+    f = feats.copy()
+    f["series_id"] = f["series_id"].astype(str)
+    ft = f[f["series_id"] == "turkey"].sort_values("d_index").reset_index(drop=True)
+
+    # Re-attach d_index already present; check several interior days.
+    for t in (30, 100, 500, 1300, 1941):
+        row = ft[ft["d_index"] == t]
+        if row.empty:
+            continue
+        expected = units_by_d.get(t - 1)
+        got = float(row["lag_1"].iloc[0])
+        assert got == pytest.approx(expected, abs=1e-6), f"lag_1 mismatch at d={t}"
+
+
+def test_no_nan_for_rows_with_d_index_ge_29(feats: pd.DataFrame):
+    rows = feats[feats["d_index"] >= 29]
+    bad = rows[FEATURES].isna().sum()
+    assert bad.sum() == 0, f"NaN present in d_index>=29 rows:\n{bad[bad > 0]}"
+
+
+def test_early_rows_may_have_nan_windows(feats: pd.DataFrame):
+    # Sanity: lag_28 at d_index==1 is undefined (no day -27) -> NaN. Confirms backward windows.
+    early = feats[feats["d_index"] == 1]
+    assert early["lag_28"].isna().all()
+
+
+def test_roll_std_population_nonneg(feats: pd.DataFrame):
+    rows = feats[feats["d_index"] >= 29]
+    assert (rows["roll_std_7"] >= 0).all()
+    assert (rows["roll_std_28"] >= 0).all()
+
+
+def test_is_event_matches_event_name(feats: pd.DataFrame):
+    en = feats["event_name_1"].astype(str)
+    assert ((en != "none").astype(int) == feats["is_event"]).all()
