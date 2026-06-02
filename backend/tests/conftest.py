@@ -111,3 +111,10 @@ def units_price_maps(series_daily):
     ubys = {s: dict(zip(g.d_index, g.units.astype(float))) for s, g in series_daily.groupby("series_id")}
     pbys = {s: dict(zip(g.d_index, g.sell_price.astype(float))) for s, g in series_daily.groupby("series_id")}
     return ubys, pbys
+
+
+# --- MT-13: register the `slow` marker so pytest -m "not slow" works cleanly ---
+def pytest_configure(config):
+    config.addinivalue_line(
+        "markers", "slow: long-running (e.g. full model retrain) — opt-in with -m slow"
+    )

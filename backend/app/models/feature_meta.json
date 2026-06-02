@@ -114,10 +114,13 @@
     "event_name_2": [
       "Cinco De Mayo",
       "Easter",
+      "Father's day",
+      "OrthodoxEaster",
       "none"
     ],
     "event_type_2": [
       "Cultural",
+      "Religious",
       "none"
     ]
   },
@@ -135,11 +138,11 @@
     "bread": 1.5447763204574585,
     "candy": 1.8735909461975098,
     "chips": 7.086697101593018,
-    "cocoa": 2.4224612712860107,
-    "icecream": 1.410620093345642,
+    "cocoa": 2.4224610328674316,
+    "icecream": 1.4106199741363525,
     "milk": 1.5448402166366577,
     "strawberries": 3.205077648162842,
     "turkey": 2.96982741355896
   },
-  "lgbm_version": "4.6.0"
+  "lgbm_version": "4.5.0"
 }
