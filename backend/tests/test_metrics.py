@@ -362,22 +362,108 @@ def test_inventory_types_match_contract():
 # ==========================================================================
 # MT-19: explainability  (03_ALGORITHM_SPEC §6.5)
 # ==========================================================================
+import pandas as pd
 
-def test_explainability_structure():
-    prof = {
-        "overall_mean": 10.0,
-        "monthly_avg": [10] * 12,
-        "event_uplift": {"Thanksgiving": 500.0},
+from app.ml import metrics as metrics_mod
+
+
+def _fake_calendar():
+    # 60 days starting at d_index=100; month 11 (November) for the window start.
+    rows = []
+    for i in range(60):
+        d = 100 + i
+        rows.append({
+            "d_index": d,
+            "month": 11,
+            "snap_count": 1 if i % 2 == 0 else 0,
+            "event_name_1": "Thanksgiving" if i == 5 else "none",
+            "event_name_2": "none",
+        })
+    return pd.DataFrame(rows)
+
+
+def _fake_profiles():
+    return {
+        "turkey": {
+            "name": "Fresh Whole Turkey",
+            "monthly_avg": [10.0] * 10 + [57.0, 92.0],  # index 10 == month 11 -> 57.0
+            "overall_mean": 18.6,
+            "event_uplift": {"Thanksgiving": 517.0},
+        }
     }
-    vel = {"value": 50.0, "status": "Accelerating"}
-    r = compute_explainability(
-        "turkey", "Fresh Whole Turkey", 11,
-        [20.0] * 28, [10.0] * 28,
-        prof, vel,
-        [{"date": "2015-11-26", "name": "Thanksgiving", "type": "National"}],
-        4,
+
+
+def test_explainability_assembly(monkeypatch):
+    # Stub recursive_forecast so the counterfactual (neutralize_events=True) returns
+    # a smaller sum than f_full -> positive event_contribution_pct, finite.
+    def fake_rf(series_id, start_d, model, feature_meta, data, calendar, neutralize_events=False):
+        return [1.0] * 28 if neutralize_events else [5.0] * 28
+    monkeypatch.setattr(metrics_mod, "recursive_forecast", fake_rf)
+
+    forecast = [5.0] * 28
+    velocity = {"value": 412.0, "status": "Accelerating"}
+    out = compute_explainability(
+        series_id="turkey", start_d=100, model=None, feature_meta=None,
+        data=pd.DataFrame({"series_id": ["turkey"], "product_name": ["Fresh Whole Turkey"]}),
+        calendar=_fake_calendar(), profiles=_fake_profiles(),
+        velocity=velocity, forecast=forecast,
     )
-    assert np.isfinite(r["event_contribution_pct"])
-    assert isinstance(r["narrative"], list) and len(r["narrative"]) >= 3
-    assert len(r["factors"]) == 3
-    assert {fac["kind"] for fac in r["factors"]} == {"event", "seasonal", "trend"}
+
+    # finite numbers
+    assert np.isfinite(out["event_contribution_pct"])
+    assert isinstance(out["snap_days_in_horizon"], int)
+    # event_contribution_pct = (140 - 28)/28*100 = 400.0
+    assert out["event_contribution_pct"] == 400.0
+    # snap days: 28-day window, even-index days have snap -> indices 0,2,...,26 = 14
+    assert out["snap_days_in_horizon"] == 14
+
+    # narrative: non-empty list of strings, includes trend + seasonality + event + contribution
+    assert isinstance(out["narrative"], list)
+    assert len(out["narrative"]) >= 3
+    assert all(isinstance(s, str) and s for s in out["narrative"])
+    assert out["narrative"][0].startswith("Demand is Accelerating (+412%")
+    assert any("Thanksgiving falls in this window" in s for s in out["narrative"])
+    assert out["narrative"][-1].startswith("Events account for ~+400%")
+
+    # factors: exactly 3, right kinds/order/values
+    factors = out["factors"]
+    assert [f["kind"] for f in factors] == ["event", "seasonal", "trend"]
+    assert [f["label"] for f in factors] == ["Event uplift", "Seasonality", "Trend"]
+    assert factors[0]["value"] == out["event_contribution_pct"]
+    assert factors[2]["value"] == 412.0
+    # seasonality value finite (month 11: (57-18.6)/18.6*100)
+    assert np.isfinite(factors[1]["value"])
+
+
+def test_explainability_no_events_omits_event_bullet(monkeypatch):
+    def fake_rf(series_id, start_d, model, feature_meta, data, calendar, neutralize_events=False):
+        return [3.0] * 28
+    monkeypatch.setattr(metrics_mod, "recursive_forecast", fake_rf)
+
+    cal = _fake_calendar()
+    cal["event_name_1"] = "none"  # remove all events
+    out = compute_explainability(
+        series_id="turkey", start_d=100, model=None, feature_meta=None,
+        data=pd.DataFrame({"series_id": ["turkey"], "product_name": ["Fresh Whole Turkey"]}),
+        calendar=cal, profiles=_fake_profiles(),
+        velocity={"value": 0.0, "status": "Stable"}, forecast=[3.0] * 28,
+    )
+    # equal sums -> 0% contribution, guarded (no div-by-zero)
+    assert out["event_contribution_pct"] == 0.0
+    # no event bullet -> exactly 3 narrative lines (trend, seasonality, contribution)
+    assert len(out["narrative"]) == 3
+    assert not any("falls in this window" in s for s in out["narrative"])
+
+
+def test_explainability_div_zero_guard(monkeypatch):
+    # neutralized forecast sums to 0 -> guard max(1e-6, .) prevents inf/nan
+    def fake_rf(series_id, start_d, model, feature_meta, data, calendar, neutralize_events=False):
+        return [0.0] * 28 if neutralize_events else [10.0] * 28
+    monkeypatch.setattr(metrics_mod, "recursive_forecast", fake_rf)
+    out = compute_explainability(
+        series_id="turkey", start_d=100, model=None, feature_meta=None,
+        data=pd.DataFrame({"series_id": ["turkey"], "product_name": ["Fresh Whole Turkey"]}),
+        calendar=_fake_calendar(), profiles=_fake_profiles(),
+        velocity={"value": 999.0, "status": "Accelerating"}, forecast=[10.0] * 28,
+    )
+    assert np.isfinite(out["event_contribution_pct"])  # finite, not inf

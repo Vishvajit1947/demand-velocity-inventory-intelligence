@@ -13,11 +13,13 @@ Formulas are LOCKED in 03_ALGORITHM_SPEC.md §6 — implement verbatim, do not r
 """
 from __future__ import annotations
 
+import calendar as _pycal
 import math
 import numpy as np
 from scipy.stats import pearsonr
 
 from app.config import HORIZON, INITIAL_COVER_DAYS, LEAD_TIME_DAYS, SERVICE_Z
+from app.ml.forecast_engine import recursive_forecast
 
 __all__ = [
     "compute_accuracy",
@@ -26,10 +28,6 @@ __all__ = [
     "compute_inventory_risk",
     "compute_explainability",
 ]
-
-_MONTHS = ["January", "February", "March", "April", "May", "June",
-           "July", "August", "September", "October", "November", "December"]
-
 
 def _as_float_array(x) -> np.ndarray:
     """Coerce an array-like to a 1-D float64 numpy array."""
@@ -228,53 +226,107 @@ def compute_inventory_risk(trailing_28, forecast) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# MT-19 — 03_ALGORITHM_SPEC.md §6.5  Explainability
+# MT-19 — 03_ALGORITHM_SPEC.md §6.5 Explainability (counterfactual + narrative)
 # ---------------------------------------------------------------------------
-def compute_explainability(series_id: str, product_name: str, month: int,
-                           forecast_full, forecast_no_event,
-                           profile: dict, velocity: dict,
-                           events_in_horizon: list[dict],
-                           snap_days_in_horizon: int) -> dict:
-    full = float(_as_float_array(forecast_full).sum())
-    base = float(_as_float_array(forecast_no_event).sum())
-    event_contribution_pct = round((full - base) / max(1e-6, base) * 100, 1)
 
-    overall = profile.get("overall_mean", 0.0) or 1e-6
-    month_avg = profile.get("monthly_avg", [overall] * 12)[month - 1]
-    month_vs_avg_pct = round((month_avg - overall) / overall * 100, 1)
+def _month_for_start_d(start_d: int, calendar) -> int:
+    """Return the 1-12 calendar month of the horizon start day (02 §1 join)."""
+    row = calendar.loc[calendar["d_index"] == start_d]
+    if len(row) == 0:
+        raise ValueError(f"start_d {start_d} not found in calendar")
+    return int(row["month"].iloc[0])
 
-    narrative = [
-        f"Demand is {velocity['status']} ({velocity['value']:+.0f}% vs the prior 28 days)."
-    ]
-    hl = "high" if month_vs_avg_pct >= 0 else "low"
-    narrative.append(
-        f"{_MONTHS[month - 1]} is a {hl}-demand month for {product_name} "
-        f"(~{month_vs_avg_pct:+.0f}% vs average)."
+
+def _horizon_rows(start_d: int, calendar):
+    """Calendar rows for d_index in [start_d .. start_d+HORIZON-1]."""
+    lo, hi = start_d, start_d + HORIZON - 1
+    return calendar.loc[(calendar["d_index"] >= lo) & (calendar["d_index"] <= hi)]
+
+
+def compute_explainability(series_id: str, start_d: int, model, feature_meta,
+                           data, calendar, profiles: dict, velocity: dict,
+                           forecast) -> dict:
+    """Event-contribution counterfactual + narrative + 3 factors (03 §6.5).
+
+    `forecast` is the already-computed normal run (f_full). This function computes
+    the neutralized counterfactual (f_no_event) once, then assembles the narrative
+    from numbers already available (velocity from MT-17, profiles from MT-14).
+
+    Returns dict(event_contribution_pct, snap_days_in_horizon, narrative, factors).
+    """
+    prof = profiles[series_id]
+    f_full = _as_float_array(forecast)
+
+    # --- Event contribution via counterfactual (03 §6.5) ---
+    f_no_event = _as_float_array(
+        recursive_forecast(series_id, start_d, model, feature_meta, data, calendar,
+                           neutralize_events=True)
     )
-    uplift = profile.get("event_uplift", {})
-    for ev in events_in_horizon:
-        if ev["name"] in uplift:
-            narrative.append(
-                f"{ev['name']} falls in this window — historically a "
-                f"{uplift[ev['name']]:+.0f}% swing."
-            )
-            break
+    sum_full = float(np.sum(f_full))
+    sum_none = float(np.sum(f_no_event))
+    event_contribution_pct = round(
+        (sum_full - sum_none) / max(1e-6, sum_none) * 100.0, 1
+    )
+
+    # --- Seasonality (03 §6.5 / §5) ---
+    month = _month_for_start_d(start_d, calendar)
+    monthly_avg = list(prof["monthly_avg"])
+    overall_mean = float(prof.get("overall_mean", 0.0))
+    if overall_mean > 0.0:
+        month_vs_avg_pct = round(
+            (float(monthly_avg[month - 1]) - overall_mean) / overall_mean * 100.0, 1
+        )
+    else:
+        month_vs_avg_pct = 0.0
+    month_name = _pycal.month_name[month]
+    high_low = "high" if month_vs_avg_pct >= 0.0 else "low"
+
+    # --- Events in horizon + SNAP days (03 §6.5 / §3.3 / 02 §4) ---
+    hrows = _horizon_rows(start_d, calendar)
+    event_uplift_map = prof.get("event_uplift", {})
+    events_in_horizon: list[tuple[str, float]] = []  # (name, uplift)
+    for _, r in hrows.iterrows():
+        for col in ("event_name_1", "event_name_2"):
+            name = r[col] if col in r.index else "none"
+            if isinstance(name, str) and name != "none":
+                events_in_horizon.append(
+                    (name, float(event_uplift_map.get(name, 0.0)))
+                )
+    snap_days_in_horizon = int((hrows["snap_count"] > 0).sum())
+
+    # --- Product name (03 §5 'name' or series_daily product_name; 02 §4) ---
+    product = prof.get("name")
+    if not product:
+        match = data.loc[data["series_id"].astype(str) == series_id, "product_name"]
+        product = str(match.iloc[0]) if len(match) else series_id
+
+    # --- Narrative bullets (03 §6.5 templates, verbatim wording) ---
+    status = velocity["status"]
+    vel_value = float(velocity["value"])
+    narrative = [
+        f"Demand is {status} ({vel_value:+.0f}% vs the prior 28 days).",
+        f"{month_name} is a {high_low}-demand month for {product} "
+        f"(~{month_vs_avg_pct:+.0f}% vs average).",
+    ]
+    if events_in_horizon:
+        ev_name, ev_uplift = events_in_horizon[0]
+        narrative.append(
+            f"{ev_name} falls in this window — historically a {ev_uplift:+.0f}% swing."
+        )
     narrative.append(
         f"Events account for ~{event_contribution_pct:+.0f}% of predicted demand in this window."
     )
-    if snap_days_in_horizon:
-        narrative.append(
-            f"{snap_days_in_horizon} SNAP payout day(s) fall in this window."
-        )
 
+    # --- Factors (03 §6.5 / 05 §5: exact 3 entries, order, kinds) ---
     factors = [
         {"label": "Event uplift", "value": event_contribution_pct, "kind": "event"},
         {"label": "Seasonality",  "value": month_vs_avg_pct,        "kind": "seasonal"},
-        {"label": "Trend",        "value": velocity["value"],        "kind": "trend"},
+        {"label": "Trend",        "value": vel_value,               "kind": "trend"},
     ]
+
     return {
         "event_contribution_pct": event_contribution_pct,
-        "snap_days_in_horizon": int(snap_days_in_horizon),
+        "snap_days_in_horizon": snap_days_in_horizon,
         "narrative": narrative,
         "factors": factors,
     }

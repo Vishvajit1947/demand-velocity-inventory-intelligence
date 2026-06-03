@@ -93,14 +93,10 @@ def _build_result(store, series_id: str, start_d: int) -> ForecastResult:
     u_by_d = store.units_by_d(series_id)
     p_by_d = store.price_by_d(series_id)
 
-    # 03 §4 forecast (float) + counterfactual for explainability (03 §6.5)
+    # 03 §4 forecast (float)
     forecast = recursive_forecast(
         series_id, start_d, store.model, store.feature_meta,
         u_by_d, p_by_d, neutralize_events=False,
-    )
-    f_no_event = recursive_forecast(
-        series_id, start_d, store.model, store.feature_meta,
-        u_by_d, p_by_d, neutralize_events=True,
     )
 
     # actuals + history (02 §4, 05 §5)
@@ -140,17 +136,22 @@ def _build_result(store, series_id: str, start_d: int) -> ForecastResult:
     )
     event_uplift = {str(k): float(v) for k, v in profile.get("event_uplift", {}).items()}
 
-    # explainability (03 §6.5 via MT-19) — using the actual metrics.py signature
+    # explainability (03 §6.5 via MT-19) — new spec signature: internally runs counterfactual
+    # compute_explainability uses the DataFrame-based recursive_forecast from forecast_engine
+    # (not the dict-based alias used above). Pass store.series_daily + plain-column calendar.
+    cal_plain = store.calendar
+    if cal_plain is not None and cal_plain.index.name == "d_index":
+        cal_plain = cal_plain.reset_index()
     expl = compute_explainability(
         series_id,
-        name,
-        month,
-        forecast,
-        f_no_event,
-        profile,
+        start_d,
+        store.model,
+        store.feature_meta,
+        store.series_daily,
+        cal_plain,
+        store.profiles,
         vel,
-        events_raw,
-        snap_days,
+        forecast,
     )
 
     return ForecastResult(
