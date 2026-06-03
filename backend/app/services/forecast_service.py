@@ -20,7 +20,7 @@ from __future__ import annotations
 from datetime import date
 
 from app import config
-from app.ml.forecast_engine import recursive_forecast
+from app.ml.forecast_engine import recursive_forecast_dicts as recursive_forecast
 from app.ml.metrics import (
     compute_accuracy,
     compute_coherence,
