@@ -156,23 +156,38 @@ def compute_coherence(actual, forecast) -> dict:
 # ---------------------------------------------------------------------------
 # MT-17 — 03_ALGORITHM_SPEC.md §6.3  Velocity score + status
 # ---------------------------------------------------------------------------
-def compute_velocity(prev_28_sum: float, forecast) -> dict:
-    recent = float(_as_float_array(forecast).sum())
-    if prev_28_sum == 0:
-        value = 0.0 if recent == 0 else 999.0
+def _velocity_status(velocity: float) -> str:
+    """Map a velocity % to its status bucket (03 §6.3, exact boundaries)."""
+    if velocity < -50.0:
+        return "Critical Decline"
+    if velocity < -10.0:          # -50 <= v < -10
+        return "Declining"
+    if velocity <= 10.0:          # -10 <= v <= 10
+        return "Stable"
+    if velocity <= 40.0:          # 10 < v <= 40
+        return "Growing"
+    return "Accelerating"         # v > 40
+
+
+def compute_velocity(prev_28_actual_sum, forecast) -> dict:
+    """Demand velocity (% change of next-28 forecast vs prior-28 actual) + status (03 §6.3).
+
+    prev_28   = prev_28_actual_sum   # caller-supplied sum of actual units [start-28 .. start-1]
+    recent_28 = sum(forecast)
+    if prev_28 == 0:  value = 0.0 if recent_28 == 0 else 999.0
+    else:             value = round((recent_28 - prev_28) / prev_28 * 100, 1)
+
+    Returns dict(value, status).
+    """
+    prev_28 = float(prev_28_actual_sum)
+    recent_28 = float(np.sum(_as_float_array(forecast)))
+
+    if prev_28 == 0.0:
+        value = 0.0 if recent_28 == 0.0 else 999.0
     else:
-        value = round((recent - prev_28_sum) / prev_28_sum * 100, 1)
-    if value < -50:
-        status = "Critical Decline"
-    elif value < -10:
-        status = "Declining"
-    elif value <= 10:
-        status = "Stable"
-    elif value <= 40:
-        status = "Growing"
-    else:
-        status = "Accelerating"
-    return {"value": value, "status": status}
+        value = round((recent_28 - prev_28) / prev_28 * 100.0, 1)
+
+    return {"value": value, "status": _velocity_status(value)}
 
 
 # ---------------------------------------------------------------------------

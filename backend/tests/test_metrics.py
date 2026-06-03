@@ -169,6 +169,77 @@ def test_velocity_zero_prev():
     assert compute_velocity(0, [5] * 28)["value"] == 999.0
 
 
+# ---------- MT-17: velocity (full boundary suite) ----------
+def _forecast_summing_to(total, n=28):
+    """Helper: an n-length forecast whose sum is exactly `total`."""
+    arr = [0.0] * n
+    arr[0] = float(total)
+    return arr
+
+
+def test_velocity_stable_zero_change():
+    # prev=100, recent=100 -> 0.0% -> Stable
+    out = compute_velocity(100.0, _forecast_summing_to(100.0))
+    assert out["value"] == 0.0
+    assert out["status"] == "Stable"
+
+
+@pytest.mark.parametrize(
+    "prev, recent, expected_value, expected_status",
+    [
+        # boundary at -50: v == -50 -> Declining
+        (100.0, 50.0, -50.0, "Declining"),
+        # just below -50 -> Critical Decline
+        (100.0, 49.0, -51.0, "Critical Decline"),
+        # boundary at -10: v == -10 -> Stable
+        (100.0, 90.0, -10.0, "Stable"),
+        # just below -10 -> Declining
+        (100.0, 89.0, -11.0, "Declining"),
+        # boundary at +10: v == 10 -> Stable
+        (100.0, 110.0, 10.0, "Stable"),
+        # just above +10 -> Growing
+        (100.0, 111.0, 11.0, "Growing"),
+        # boundary at +40: v == 40 -> Growing
+        (100.0, 140.0, 40.0, "Growing"),
+        # just above +40 -> Accelerating
+        (100.0, 141.0, 41.0, "Accelerating"),
+    ],
+)
+def test_velocity_bucket_boundaries(prev, recent, expected_value, expected_status):
+    out = compute_velocity(prev, _forecast_summing_to(recent))
+    assert out["value"] == pytest.approx(expected_value, abs=1e-9)
+    assert out["status"] == expected_status
+
+
+def test_velocity_prev_zero_recent_zero():
+    # prev==0 and recent==0 -> 0.0 -> Stable
+    out = compute_velocity(0.0, _forecast_summing_to(0.0))
+    assert out["value"] == 0.0
+    assert out["status"] == "Stable"
+
+
+def test_velocity_prev_zero_recent_positive_sentinel():
+    # prev==0 and recent>0 -> 999.0 -> Accelerating
+    out = compute_velocity(0.0, _forecast_summing_to(37.5))
+    assert out["value"] == 999.0
+    assert out["status"] == "Accelerating"
+
+
+def test_velocity_rounding_one_decimal():
+    # prev=3, recent=4 -> (4-3)/3*100 = 33.333... -> 33.3
+    out = compute_velocity(3.0, _forecast_summing_to(4.0))
+    assert out["value"] == 33.3
+    assert out["status"] == "Growing"
+
+
+def test_velocity_sums_forecast_array():
+    # recent_28 is the SUM of the whole forecast array, not just one element
+    fc = [10.0] * 28  # sum = 280
+    out = compute_velocity(140.0, fc)
+    assert out["value"] == 100.0       # (280-140)/140*100
+    assert out["status"] == "Accelerating"
+
+
 # ==========================================================================
 # MT-18: inventory risk  (03_ALGORITHM_SPEC §6.4)
 # ==========================================================================
