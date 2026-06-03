@@ -110,9 +110,10 @@ def _forecast_result_example():
         "forecast": _horizon_floats(),
         "metrics": {
             "accuracy": 78.4,
+            "wape": 21.6,
             "coherence": 71.0,
             "coherence_label": "Moderate",
-            "smape": 21.6,
+            "smape": 24.1,
             "mae": 3.21,
             "rmse": 4.87,
         },

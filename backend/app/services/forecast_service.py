@@ -164,6 +164,7 @@ def _build_result(store, series_id: str, start_d: int) -> ForecastResult:
         forecast=[round(x, 1) for x in forecast],          # 1 dp for display (05 §5)
         metrics=Metrics(
             accuracy=acc["accuracy"],
+            wape=acc["wape"],
             coherence=coh["coherence"],
             coherence_label=coh["coherence_label"],
             smape=acc["smape"],

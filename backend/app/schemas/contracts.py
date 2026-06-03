@@ -165,9 +165,14 @@ HistoryBlock = History
 
 
 class Metrics(BaseModel):
-    """05 §5 `metrics` (03 §6.1–6.2)."""
+    """05 §5 `metrics` (03 §6.1–6.2).
+
+    Field order matches the contract JSON exactly:
+      accuracy, wape (LOCKED — 05 §5 / 03 §6.1), coherence, coherence_label, smape, mae, rmse.
+    """
 
     accuracy: float
+    wape: float
     coherence: float
     coherence_label: CoherenceLabel
     smape: float

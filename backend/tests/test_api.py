@@ -128,7 +128,7 @@ def test_forecast_happy_path_turkey(client):
     # metrics typed (05 §5)
     m = res["metrics"]
     assert set(m.keys()) == {
-        "accuracy", "coherence", "coherence_label", "smape", "mae", "rmse",
+        "accuracy", "wape", "coherence", "coherence_label", "smape", "mae", "rmse",
     }
     assert m["coherence_label"] in {"Strong", "Moderate", "Weak"}
 
