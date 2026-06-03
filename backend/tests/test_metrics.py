@@ -243,6 +243,8 @@ def test_velocity_sums_forecast_array():
 # ==========================================================================
 # MT-18: inventory risk  (03_ALGORITHM_SPEC §6.4)
 # ==========================================================================
+from app.config import INITIAL_COVER_DAYS, LEAD_TIME_DAYS, SERVICE_Z, HORIZON
+
 
 def test_inventory_risk_shape_and_monotonic():
     trailing = [10.0] * 28
@@ -252,6 +254,109 @@ def test_inventory_risk_shape_and_monotonic():
     assert high["cover_days"] <= low["cover_days"]     # more demand -> runs out sooner
     assert high["stockout_risk"] in {"Low", "Medium", "High"}
     assert high["recommended_order_qty"] >= 0
+
+
+def test_inventory_projected_stock_length_28():
+    trailing = [10.0] * 28
+    fc = [5.0] * 28
+    out = compute_inventory_risk(trailing, fc)
+    assert len(out["projected_stock"]) == 28
+
+
+def test_inventory_deterministic():
+    trailing = [3.0, 4.0, 5.0] * 9 + [3.0]   # 28 values
+    fc = [2.0] * 28
+    a = compute_inventory_risk(trailing, fc)
+    b = compute_inventory_risk(trailing, fc)
+    assert a == b
+
+
+def test_inventory_on_hand_and_horizon_demand():
+    # constant trailing 10 -> mean_d=10, std_d=0
+    trailing = [10.0] * 28
+    fc = [4.0] * 28
+    out = compute_inventory_risk(trailing, fc)
+    assert out["on_hand"] == round(10.0 * INITIAL_COVER_DAYS)   # 140
+    assert out["safety_stock"] == 0.0                            # std 0
+    assert out["horizon_demand"] == round(4.0 * 28, 1)          # 112.0
+    # reorder_point = mean_d*LEAD + safety = 10*7 + 0 = 70.0
+    assert out["reorder_point"] == 70.0
+
+
+def test_inventory_cover_days_is_first_depletion_index():
+    # on_hand from mean 10 -> 140. Demand 30/day depletes:
+    # after day0:110, ... stock<=0 first when cumulative demand >= 140.
+    # 30*5=150 -> day index 4 (0-based) is first <=0 (140-150=-10).
+    trailing = [10.0] * 28
+    fc = [30.0] * 28
+    out = compute_inventory_risk(trailing, fc)
+    assert out["cover_days"] == 4
+    assert out["stockout_risk"] == "High"   # 4 <= LEAD_TIME_DAYS (7)
+
+
+def test_inventory_risk_thresholds():
+    trailing = [10.0] * 28  # on_hand 140
+    # High: deplete within LEAD_TIME_DAYS (<=7). 140/20=7 -> day index 6 (<=0 at 140-7*20=0).
+    out_high = compute_inventory_risk(trailing, [20.0] * 28)
+    assert out_high["cover_days"] <= LEAD_TIME_DAYS
+    assert out_high["stockout_risk"] == "High"
+
+    # Medium: deplete between day 8 and 27.
+    out_med = compute_inventory_risk(trailing, [10.0] * 28)  # 140/10 -> day idx 13
+    assert LEAD_TIME_DAYS < out_med["cover_days"] <= HORIZON
+    assert out_med["stockout_risk"] == "Medium"
+
+    # Low: never depletes over 28 days -> cover_days = HORIZON+1 = 29.
+    out_low = compute_inventory_risk(trailing, [1.0] * 28)   # only 28 total < 140
+    assert out_low["cover_days"] == HORIZON + 1
+    assert out_low["stockout_risk"] == "Low"
+
+
+def test_inventory_monotonic_more_demand_fewer_cover_days():
+    trailing = [10.0] * 28
+    cover_light = compute_inventory_risk(trailing, [5.0] * 28)["cover_days"]
+    cover_heavy = compute_inventory_risk(trailing, [25.0] * 28)["cover_days"]
+    assert cover_heavy < cover_light
+
+
+def test_inventory_overstock_flag():
+    # on_hand 140, tiny horizon demand -> on_hand > 1.5*demand -> overstock True
+    trailing = [10.0] * 28
+    out = compute_inventory_risk(trailing, [1.0] * 28)  # demand 28; 1.5*28=42 < 140
+    assert out["overstock"] is True
+    # heavy demand -> not overstock
+    out2 = compute_inventory_risk(trailing, [20.0] * 28)  # demand 560
+    assert out2["overstock"] is False
+
+
+def test_inventory_recommended_order_qty():
+    # mean 10 -> on_hand 140, std 0 -> safety 0. demand 112.
+    # recommended = max(0, round(112 + 0 - 140)) = max(0, -28) = 0
+    trailing = [10.0] * 28
+    out = compute_inventory_risk(trailing, [4.0] * 28)
+    assert out["recommended_order_qty"] == 0
+    # heavier demand -> positive recommendation
+    out2 = compute_inventory_risk(trailing, [20.0] * 28)  # demand 560
+    assert out2["recommended_order_qty"] == max(0, round(560 + 0 - 140))
+
+
+def test_inventory_safety_stock_uses_population_std():
+    # trailing with variation -> safety = SERVICE_Z * pop_std * sqrt(LEAD)
+    trailing = [0.0, 20.0] * 14  # mean 10, population std 10
+    fc = [4.0] * 28
+    out = compute_inventory_risk(trailing, fc)
+    expected = SERVICE_Z * 10.0 * (LEAD_TIME_DAYS ** 0.5)
+    assert out["safety_stock"] == pytest.approx(round(expected, 1), abs=1e-9)
+
+
+def test_inventory_types_match_contract():
+    out = compute_inventory_risk([10.0] * 28, [10.0] * 28)
+    assert isinstance(out["on_hand"], int)
+    assert isinstance(out["cover_days"], int)
+    assert isinstance(out["recommended_order_qty"], int)
+    assert isinstance(out["overstock"], bool)
+    assert isinstance(out["stockout_risk"], str)
+    assert isinstance(out["projected_stock"], list)
 
 
 # ==========================================================================
