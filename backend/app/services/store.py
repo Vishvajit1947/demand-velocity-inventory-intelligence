@@ -20,14 +20,13 @@ from __future__ import annotations
 import json
 import pickle
 from dataclasses import dataclass, field
-from datetime import date, timedelta
 from typing import Any, Optional
 
 import pandas as pd
 
-from app.config import PATHS, SERIES_IDS, TRAIN_END_D, TRAIN_START_D
+from app.config import PATHS, TRAIN_END_D, TRAIN_START_D
 
-# Re-export PATHS so test mocks can reference store_mod.PATHS
+# Re-export PATHS so test monkeypatching can target store_mod.PATHS
 __all__ = ["Store", "get_store", "reset_store", "PATHS"]
 
 
@@ -61,7 +60,7 @@ class Store:
         s.feature_meta = s._safe(_load_json, PATHS["feature_meta"], "feature_meta")
         s.profiles = s._safe(_load_json, PATHS["profiles"], "profiles")
         s.series_daily = s._safe(_load_parquet, PATHS["series_daily"], "series_daily")
-        s.calendar = s._safe(_load_calendar_csv, PATHS["calendar"], "calendar")
+        s.calendar = s._safe(_load_calendar, PATHS["calendar"], "calendar")
 
         if s.series_daily is not None:
             # Stable order for deterministic, fast (series_id, d_index) lookups (02 §4).
@@ -83,18 +82,6 @@ class Store:
             self.load_errors[name] = f"{type(exc).__name__}: {exc}"
             return None
 
-    # ---- date helpers (backed by app.ml.calendar_features) ---------------
-
-    def d_to_date(self, d: int) -> date:
-        """Map d-index to calendar date using the MT-11 formula (02 §1)."""
-        from app.ml.calendar_features import d_to_date as _d2d
-        return _d2d(d)
-
-    def date_to_d(self, dt) -> int:
-        """Map a date/str/Timestamp to d-index using MT-11 formula (02 §1)."""
-        from app.ml.calendar_features import date_to_d as _dt2d
-        return _dt2d(dt)
-
     # ---- read helpers ---------------------------------------------------
     def actual_units(self, series_id: str, d_from: int, d_to: int) -> list[float]:
         """
@@ -104,30 +91,13 @@ class Store:
         if self.series_daily is None:
             raise RuntimeError("series_daily not loaded; cannot read actual_units")
         df = self.series_daily
-        sid = str(series_id)
         mask = (
-            (df["series_id"].astype(str) == sid)
+            (df["series_id"] == series_id)
             & (df["d_index"] >= d_from)
             & (df["d_index"] <= d_to)
         )
         sub = df.loc[mask, ["d_index", "units"]].sort_values("d_index")
         return [float(u) for u in sub["units"].to_list()]
-
-    def units_by_d(self, series_id: str) -> dict[int, float]:
-        """Return a full {d_index: units} dict for the series (for recursive_forecast)."""
-        if self.series_daily is None:
-            raise RuntimeError("series_daily not loaded")
-        df = self.series_daily
-        sub = df[df["series_id"].astype(str) == str(series_id)]
-        return dict(zip(sub["d_index"].tolist(), sub["units"].astype(float).tolist()))
-
-    def price_by_d(self, series_id: str) -> dict[int, float]:
-        """Return a full {d_index: sell_price} dict for the series (for recursive_forecast)."""
-        if self.series_daily is None:
-            raise RuntimeError("series_daily not loaded")
-        df = self.series_daily
-        sub = df[df["series_id"].astype(str) == str(series_id)]
-        return dict(zip(sub["d_index"].tolist(), sub["sell_price"].astype(float).tolist()))
 
     def series_train_mean_price(self, series_id: str) -> float:
         """
@@ -140,7 +110,7 @@ class Store:
             raise RuntimeError("series_daily not loaded; cannot compute train mean price")
         df = self.series_daily
         mask = (
-            (df["series_id"].astype(str) == str(series_id))
+            (df["series_id"] == series_id)
             & (df["d_index"] >= TRAIN_START_D)
             & (df["d_index"] <= TRAIN_END_D)
         )
@@ -151,48 +121,6 @@ class Store:
             value = float(mean_price)
         self._train_mean_price[series_id] = value
         return value
-
-    def events_in_range(self, d_from: int, d_to: int) -> list[dict]:
-        """
-        Return EventInfo dicts {date, name, type} for calendar event days in [d_from, d_to].
-        An event day is one where event_name_1 is not "none" (03 §3.3).
-        """
-        if self.calendar is None:
-            return []
-        cal = self.calendar
-        # calendar may be indexed by d_index (MT-11 contract) or have it as a column
-        if cal.index.name == "d_index":
-            sub = cal.loc[
-                (cal.index >= d_from) & (cal.index <= d_to)
-            ]
-            # Build date column from index if needed
-            d_idx = sub.index
-        else:
-            sub = cal[(cal["d_index"] >= d_from) & (cal["d_index"] <= d_to)]
-            d_idx = sub["d_index"]
-
-        events = []
-        for i, (d_val, row) in enumerate(zip(d_idx, sub.itertuples(index=False))):
-            name = str(getattr(row, "event_name_1", "none"))
-            if name not in ("", "none"):
-                dt = self.d_to_date(int(d_val))
-                events.append({
-                    "date": dt.isoformat(),
-                    "name": name,
-                    "type": str(getattr(row, "event_type_1", "")),
-                })
-        return events
-
-    def snap_days_in_range(self, d_from: int, d_to: int) -> int:
-        """Count of days in [d_from, d_to] where snap_count > 0."""
-        if self.calendar is None:
-            return 0
-        cal = self.calendar
-        if cal.index.name == "d_index":
-            sub = cal.loc[(cal.index >= d_from) & (cal.index <= d_to)]
-        else:
-            sub = cal[(cal["d_index"] >= d_from) & (cal["d_index"] <= d_to)]
-        return int((sub["snap_count"] > 0).sum())
 
 
 # ---------------------------------------------------------------------------
@@ -217,8 +145,14 @@ def _load_parquet(path):
     return pd.read_parquet(path)
 
 
-def _load_calendar_csv(path):
-    """Load calendar using MT-11's load_calendar() which returns an indexed DataFrame."""
+def _load_calendar(path):
+    # Lazy import so MT-21 is valid before MT-11 lands; calendar_features.load_calendar (MT-11)
+    # parses data/raw/calendar.csv into a DataFrame.
+    # First verify the path exists so _safe catches a missing file as FileNotFoundError.
+    import pathlib
+    p = pathlib.Path(path)
+    if not p.exists():
+        raise FileNotFoundError(f"calendar file not found: {path}")
     from app.ml.calendar_features import load_calendar
     return load_calendar()
 

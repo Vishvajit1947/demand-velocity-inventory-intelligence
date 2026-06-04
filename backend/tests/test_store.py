@@ -34,7 +34,6 @@ def test_graceful_when_artifacts_missing(tmp_path, monkeypatch):
 
 # ---- the following require real artifacts (skip otherwise) ------------------
 def _require_loaded():
-    reset_store()
     s = get_store()
     if not s.model_loaded:
         pytest.skip("artifacts not present (model_loaded False); needs MT-10/13/14/11")
@@ -74,27 +73,3 @@ def test_train_mean_price_positive_and_cached():
     p2 = s.series_train_mean_price(SERIES_IDS[0])
     assert p1 == p2  # cached
     assert p1 > 0.0  # real price (or 1.0 fallback), never 0/NaN
-
-
-def test_d_to_date_and_date_to_d():
-    """store.d_to_date / date_to_d delegate to calendar_features (MT-11)."""
-    s = _require_loaded()
-    import datetime
-    d1 = s.d_to_date(1)
-    assert d1 == datetime.date(2011, 1, 29)
-    assert s.date_to_d(d1) == 1
-
-
-def test_events_in_range_returns_list():
-    s = _require_loaded()
-    events = s.events_in_range(FIRST_SELECTABLE_D, FIRST_SELECTABLE_D + 27)
-    assert isinstance(events, list)
-    for ev in events:
-        assert set(ev.keys()) == {"date", "name", "type"}
-
-
-def test_snap_days_in_range_nonneg():
-    s = _require_loaded()
-    n = s.snap_days_in_range(FIRST_SELECTABLE_D, FIRST_SELECTABLE_D + 27)
-    assert isinstance(n, int)
-    assert n >= 0
