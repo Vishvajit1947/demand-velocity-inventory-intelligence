@@ -17,6 +17,7 @@ Citations:
 
 from __future__ import annotations
 
+import datetime
 import json
 import pickle
 from dataclasses import dataclass, field
@@ -98,6 +99,94 @@ class Store:
         )
         sub = df.loc[mask, ["d_index", "units"]].sort_values("d_index")
         return [float(u) for u in sub["units"].to_list()]
+
+    def d_to_date(self, d: int) -> "datetime.date":
+        """
+        Map a day index d (>=1) to its calendar date (02_DATA_SPEC §1, calendar map).
+
+        Delegates to calendar_features.d_to_date so the single authoritative
+        implementation (MT-11) is always used. Required by the /api/calendar/bounds
+        endpoint (MT-22) which calls store.d_to_date(config.TRAIN_START_D) etc.
+        """
+        from app.ml.calendar_features import d_to_date as _d_to_date
+        return _d_to_date(d)
+
+    def date_to_d(self, dt) -> int:
+        """
+        Inverse of d_to_date: map a date to its day index (02_DATA_SPEC §1).
+
+        Delegates to calendar_features.date_to_d (MT-11). Required by
+        forecast_service._validate_start_d (MT-23).
+        """
+        from app.ml.calendar_features import date_to_d as _date_to_d
+        return _date_to_d(dt)
+
+    def units_by_d(self, series_id: str) -> dict:
+        """
+        Return {d_index: units} for all days of `series_id` (02 §4).
+
+        Used by forecast_service / recursive_forecast as the u_by_d dict seed.
+        """
+        if self.series_daily is None:
+            raise RuntimeError("series_daily not loaded; cannot read units_by_d")
+        df = self.series_daily
+        mask = df["series_id"] == series_id
+        sub = df.loc[mask, ["d_index", "units"]]
+        return {int(row["d_index"]): float(row["units"]) for _, row in sub.iterrows()}
+
+    def price_by_d(self, series_id: str) -> dict:
+        """
+        Return {d_index: sell_price} for all days of `series_id` (02 §4).
+
+        Used by forecast_service / recursive_forecast as the p_by_d dict seed.
+        """
+        if self.series_daily is None:
+            raise RuntimeError("series_daily not loaded; cannot read price_by_d")
+        df = self.series_daily
+        mask = df["series_id"] == series_id
+        sub = df.loc[mask, ["d_index", "sell_price"]]
+        return {int(row["d_index"]): float(row["sell_price"]) for _, row in sub.iterrows()}
+
+    def events_in_range(self, d_from: int, d_to: int) -> list:
+        """
+        Return list of {date, name, type} dicts for calendar event days in [d_from, d_to].
+
+        Both event slots (event_name_1/type_1 and event_name_2/type_2) are included.
+        Days with no event (value == "none") are skipped. (05 §5 events_in_horizon)
+        """
+        if self.calendar is None:
+            raise RuntimeError("calendar not loaded; cannot read events_in_range")
+        cal = self.calendar  # indexed by d_index
+        events = []
+        for d in range(d_from, d_to + 1):
+            if d not in cal.index:
+                continue
+            row = cal.loc[d]
+            date_str = self.d_to_date(d).isoformat()
+            for name_col, type_col in [("event_name_1", "event_type_1"),
+                                        ("event_name_2", "event_type_2")]:
+                name = str(row[name_col])
+                if name and name != "none":
+                    events.append({
+                        "date": date_str,
+                        "name": name,
+                        "type": str(row[type_col]),
+                    })
+        return events
+
+    def snap_days_in_range(self, d_from: int, d_to: int) -> int:
+        """
+        Count days with snap_count > 0 in the inclusive range [d_from, d_to].
+
+        Used by explainability (03 §6.5 snap_days_in_horizon).
+        """
+        if self.calendar is None:
+            raise RuntimeError("calendar not loaded; cannot read snap_days_in_range")
+        cal = self.calendar
+        idx = [d for d in range(d_from, d_to + 1) if d in cal.index]
+        if not idx:
+            return 0
+        return int((cal.loc[idx, "snap_count"] > 0).sum())
 
     def series_train_mean_price(self, series_id: str) -> float:
         """
