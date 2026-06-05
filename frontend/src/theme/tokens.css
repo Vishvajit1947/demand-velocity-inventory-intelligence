@@ -1,0 +1,26 @@
+/* Design tokens — 06 §2 (LOCKED). Imported once in main.tsx.
+   Tailwind maps the same hexes (MT-02); CSS variables back raw-CSS needs
+   (glass, glow, animated background in MT-32) and are the canonical source. */
+
+:root {
+  /* ── Color — 06 §2 ── */
+  --bg-base:        #070b14;
+  --bg-panel:       rgba(18, 26, 44, 0.55);
+  --bg-panel-solid: #0e1626;
+  --border-glass:   rgba(120, 160, 255, 0.12);
+  --text-primary:   #e8eef9;
+  --text-muted:     #8a97b2;
+  --accent-cyan:    #2fe6ff;
+  --accent-violet:  #8b5cff;
+  --accent-lime:    #4dffb0;
+  --accent-amber:   #ffc24d;
+  --accent-rose:    #ff5c7a;
+  --grid-line:      rgba(120, 160, 255, 0.08);
+
+  /* ── Shape / effects — 06 §2 ── */
+  --radius-panel:  20px;
+  --radius-card:   14px;
+  --radius-chip:   9999px;
+  --shadow-panel:  0 8px 40px rgba(0, 0, 0, 0.45);
+  --blur-panel:    18px;
+}
