@@ -3,7 +3,7 @@ import ReactDOM from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import App from "./App";
 import "./theme/global.css";
-// import "./theme/tokens.css"; // TODO(MT-30): full design tokens + glass/glow utilities
+import "./theme/tokens.css";
 
 const queryClient = new QueryClient({
   defaultOptions: {

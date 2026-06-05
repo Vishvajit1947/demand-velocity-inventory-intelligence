@@ -28,3 +28,68 @@
 }
 
 /* tokens.css (MT-30) is imported in main.tsx once it exists. */
+
+@layer components {
+  /* Glass panel — 06 §2 Shape/Effects + §1 principle 2 */
+  .glass-panel {
+    position: relative;
+    background: var(--bg-panel);
+    backdrop-filter: blur(var(--blur-panel));
+    -webkit-backdrop-filter: blur(var(--blur-panel));
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-panel);
+    box-shadow: var(--shadow-panel);
+  }
+  /* Faint inner top highlight (06 §2) */
+  .glass-panel::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.06);
+  }
+
+  /* Accent glow — box-shadow at ~18% opacity (06 §2 "Glow utility") */
+  .glow-cyan {
+    box-shadow: 0 0 24px rgba(47, 230, 255, 0.18);
+  }
+  .glow-violet {
+    box-shadow: 0 0 24px rgba(139, 92, 255, 0.18);
+  }
+  .glow-lime {
+    box-shadow: 0 0 24px rgba(77, 255, 176, 0.18);
+  }
+  .glow-amber {
+    box-shadow: 0 0 24px rgba(255, 194, 77, 0.18);
+  }
+  .glow-rose {
+    box-shadow: 0 0 24px rgba(255, 92, 122, 0.18);
+  }
+
+  /* Shimmer for skeletons (06 §5 Loading) */
+  .shimmer {
+    background: linear-gradient(
+      90deg,
+      rgba(120, 160, 255, 0.06) 25%,
+      rgba(120, 160, 255, 0.14) 37%,
+      rgba(120, 160, 255, 0.06) 63%
+    );
+    background-size: 400% 100%;
+    animation: shimmer 1.4s ease infinite;
+  }
+  @keyframes shimmer {
+    0% {
+      background-position: 100% 0;
+    }
+    100% {
+      background-position: 0 0;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shimmer {
+    animation: none;
+  }
+}
