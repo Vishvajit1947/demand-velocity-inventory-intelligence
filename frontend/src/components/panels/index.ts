@@ -10,7 +10,11 @@ export type { VelocityPanelProps } from "./VelocityPanel";
 export { EventImpactPanel } from "./EventImpactPanel";
 export type { EventImpactPanelProps } from "./EventImpactPanel";
 
-// TODO(MT-39..41): SeasonalPanel, InventoryRiskPanel, ExplainabilityPanel (06 §4 / §8).
+// MT-39
+export { SeasonalPanel } from "./SeasonalPanel";
+export type { SeasonalPanelProps } from "./SeasonalPanel";
+
+// TODO(MT-40..41): InventoryRiskPanel, ExplainabilityPanel (06 §4 / §8).
 export { ForecastResult } from "./ForecastResult";
 export type { ForecastResultProps } from "./ForecastResult";
 
