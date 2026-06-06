@@ -2,7 +2,11 @@
 export { ExecutiveOverview } from "./ExecutiveOverview";
 export type { ExecutiveOverviewProps } from "./ExecutiveOverview";
 
-// TODO(MT-37..41): VelocityPanel, EventImpactPanel,
+// MT-37
+export { VelocityPanel } from "./VelocityPanel";
+export type { VelocityPanelProps } from "./VelocityPanel";
+
+// TODO(MT-38..41): EventImpactPanel,
 // SeasonalPanel, InventoryRiskPanel, ExplainabilityPanel (06 §4 / §8).
 export { ForecastResult } from "./ForecastResult";
 export type { ForecastResultProps } from "./ForecastResult";

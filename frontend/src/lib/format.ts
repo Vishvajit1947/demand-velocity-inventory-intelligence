@@ -23,6 +23,14 @@ export function formatPct(n: number, decimals = 0, withSign = true): string {
   })}%`;
 }
 
+/**
+ * Signed integer percent — alias used by panels (MT-37, §5).
+ * e.g. signedPct(412) → "+412%", signedPct(-37) → "-37%", signedPct(0) → "0%"
+ */
+export function signedPct(n: number): string {
+  return formatPct(Math.round(n), 0, true);
+}
+
 export type DateStyle = "short" | "medium" | "weekday";
 
 /** Format an ISO YYYY-MM-DD date. Parsed as UTC to avoid TZ drift (05 intro). */
