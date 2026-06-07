@@ -59,7 +59,6 @@ export function ExecutiveOverview({
       ))}
     </div>
   );
-
   // MT-42: wrap in PanelState for all four states (06 §5).
   // hasData = !!summary (summary arrives on first success; kept through errors).
   return (
@@ -127,9 +126,9 @@ function SummaryCards({ summary, animate }: { summary: Summary; animate: boolean
           accent={accentStyle(velocityPositive ? "lime" : "rose")}
           icon={
             velocityPositive ? (
-              <TrendingUp size={18} />
+              <TrendingUp size={18} aria-label="up" />
             ) : (
-              <TrendingDown size={18} />
+              <TrendingDown size={18} aria-label="down" />
             )
           }
           footnote="Avg velocity · vs prior 28 days"

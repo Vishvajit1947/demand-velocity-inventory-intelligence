@@ -114,7 +114,7 @@ describe("ForecastControlBar (MT-33)", () => {
   it("constrains the date input to the selectable range (min/max attributes)", () => {
     setup({ selectedIds: ["turkey"] });
     // Open the popover
-    fireEvent.click(screen.getByLabelText(/open date picker/i));
+    fireEvent.click(screen.getByLabelText(/Choose start date/i));
     const input = screen.getByLabelText(
       /forecast start date input/i,
     ) as HTMLInputElement;
@@ -124,7 +124,7 @@ describe("ForecastControlBar (MT-33)", () => {
 
   it("clamps an out-of-range date value and never emits it as-is", () => {
     const { onDateChange } = setup({ selectedIds: ["turkey"] });
-    fireEvent.click(screen.getByLabelText(/open date picker/i));
+    fireEvent.click(screen.getByLabelText(/Choose start date/i));
     const input = screen.getByLabelText(
       /forecast start date input/i,
     ) as HTMLInputElement;
@@ -136,7 +136,7 @@ describe("ForecastControlBar (MT-33)", () => {
 
   it("clamps a date before first_selectable_date to the lower bound", () => {
     const { onDateChange } = setup({ selectedIds: ["turkey"] });
-    fireEvent.click(screen.getByLabelText(/open date picker/i));
+    fireEvent.click(screen.getByLabelText(/Choose start date/i));
     const input = screen.getByLabelText(
       /forecast start date input/i,
     ) as HTMLInputElement;
@@ -183,7 +183,7 @@ describe("ForecastControlBar (MT-33)", () => {
   // Date popover opens and shows range hint
   it("date popover shows the selectable range hint", () => {
     setup({ selectedIds: [] });
-    fireEvent.click(screen.getByLabelText(/open date picker/i));
+    fireEvent.click(screen.getByLabelText(/Choose start date/i));
     // The popover hint paragraph contains both bound dates.
     // "Apr 25, 2016" also appears in the trigger button, so we look
     // specifically for the hint paragraph that contains BOTH dates.

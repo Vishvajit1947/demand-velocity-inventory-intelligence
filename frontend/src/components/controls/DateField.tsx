@@ -4,7 +4,7 @@
  * Optional "Snap to week start (Sat)" toggle (06 §4, 05 §4 week anchor = Saturday).
  * MT-33 — src/components/controls/DateField.tsx
  */
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, type KeyboardEvent } from "react";
 import { Calendar as CalendarIcon, Check } from "lucide-react";
 import { cn } from "../../lib/cn";
 import { formatDate } from "../../lib/format";
@@ -47,6 +47,7 @@ export function DateField({ value, bounds, loading, onChange }: DateFieldProps) 
   const [open, setOpen] = useState(false);
   const [snap, setSnap] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   const min = bounds?.first_selectable_date ?? "";
   const max = bounds?.last_selectable_date ?? "";
@@ -89,9 +90,10 @@ export function DateField({ value, bounds, loading, onChange }: DateFieldProps) 
 
       {/* Trigger button */}
       <button
+        ref={triggerRef}
         type="button"
         disabled={disabled}
-        aria-label="Open date picker"
+        aria-label="Choose start date"
         aria-expanded={open}
         aria-haspopup="dialog"
         onClick={() => setOpen((v) => !v)}
@@ -112,6 +114,12 @@ export function DateField({ value, bounds, loading, onChange }: DateFieldProps) 
         <div
           role="dialog"
           aria-label="Date picker"
+          onKeyDown={(e: KeyboardEvent<HTMLDivElement>) => {
+            if (e.key === "Escape") {
+              setOpen(false);
+              triggerRef.current?.focus(); // return focus to trigger (06 §6)
+            }
+          }}
           className={cn(
             "absolute left-0 top-full z-50 mt-2 min-w-[260px]",
             "rounded-card border border-border-glass bg-panel-solid",

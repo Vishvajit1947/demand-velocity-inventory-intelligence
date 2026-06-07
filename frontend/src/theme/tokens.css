@@ -5,7 +5,7 @@
 :root {
   /* ── Color — 06 §2 ── */
   --bg-base:        #070b14;
-  --bg-panel:       rgba(18, 26, 44, 0.55);
+  --bg-panel:       rgba(18, 26, 44, 0.62); /* MT-43 — bumped 0.55→0.62 to guarantee ≥4.5:1 text contrast (06 §6) */
   --bg-panel-solid: #0e1626;
   --border-glass:   rgba(120, 160, 255, 0.12);
   --text-primary:   #e8eef9;
@@ -36,4 +36,26 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .panel-hover-glow { transition: none; }
+}
+
+/* MT-43 — Full prefers-reduced-motion support (06 §6/§2).
+   Neutralises transitions/animations: skeleton shimmer, hover transitions,
+   animated background blobs, chart draw, count-up transforms. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* MT-43 — Sticky control bar with a fixed height so it never shifts (06 §3). */
+.control-bar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  min-height: 72px;
 }

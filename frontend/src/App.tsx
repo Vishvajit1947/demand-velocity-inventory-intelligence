@@ -9,6 +9,7 @@ import { useBounds, useForecastMutation } from "./hooks/useForecast";
 import { ToastProvider } from "./components/ui/Toast";
 import { ToastHost } from "./components/ui/ToastHost";
 import { EntranceList, EntranceItem } from "./components/ui/EntranceList";
+import { AnimatedBackground } from "./components/ui/AnimatedBackground";
 import {
   ExecutiveOverview,
   ForecastResult,
@@ -71,8 +72,12 @@ export default function App() {
       {/* MT-42: fire toast on forecast error (05 §7 message) */}
       <ToastHost error={forecast.error} status={forecast.status} />
 
-      <div className="min-h-screen bg-base text-text-primary font-sans">
-        {/* ── Sticky control bar ─────────────────────────────────────────── */}
+      {/* MT-43 §5.8 — animated background (frozen under prefers-reduced-motion, 06 §6) */}
+      <AnimatedBackground />
+
+      <div className="relative min-h-screen bg-base text-text-primary font-sans">
+        {/* ── Sticky control bar — .control-bar ensures fixed height, no shift (06 §3) */}
+        <div className="control-bar">
         <ForecastControlBar
           selectedDate={selectedDate}
           selectedIds={selectedIds}
@@ -81,6 +86,7 @@ export default function App() {
           onProductsChange={setSelectedIds}
           onSubmit={handleSubmit}
         />
+        </div>
 
         {/* ── Main content area ──────────────────────────────────────────── */}
         <main className="mx-auto max-w-screen-2xl px-6 py-8">
@@ -89,18 +95,24 @@ export default function App() {
            * (fade + 12px rise, stagger 0.06s, 06 §2) fires once on Success.
            * Each EntranceItem carries the hover micro-interaction (scale 1.01 + glow).
            */}
-          <EntranceList className="grid grid-cols-12 gap-6">
+          {/*
+           * MT-43 §5.1 — Responsive grid (06 §3):
+           * Mobile-first base = 1 column (below 1280px).
+           * At ≥1280px (xl) → full 12-column grid with xl:col-span-* per panel.
+           * Gap stays 24px (gap-6, 06 §2). Nothing overflows below 1280px.
+           */}
+          <EntranceList className="grid grid-cols-1 gap-6 xl:grid-cols-12">
 
-            {/* P1 — Executive Overview (col-span-12) */}
-            <EntranceItem className="col-span-12">
+            {/* P1 — Executive Overview (full 12 cols at xl) */}
+            <EntranceItem className="min-h-[140px] xl:col-span-12">
               <ExecutiveOverview
                 summary={forecastData?.summary}
                 loading={isPending}
               />
             </EntranceItem>
 
-            {/* P2 — Forecast Result (col-span-8) */}
-            <EntranceItem className="col-span-12 xl:col-span-8">
+            {/* P2 — Forecast Result (8 cols at xl) */}
+            <EntranceItem className="min-h-[360px] xl:col-span-8">
               <ForecastResult
                 results={forecastData?.results ?? []}
                 activeSeriesId={activeSeriesId}
@@ -110,28 +122,28 @@ export default function App() {
               />
             </EntranceItem>
 
-            {/* P3 — Velocity (col-span-4) */}
-            <EntranceItem className="col-span-12 xl:col-span-4">
+            {/* P3 — Velocity (4 cols at xl) */}
+            <EntranceItem className="min-h-[300px] xl:col-span-4">
               <VelocityPanel result={selectedResult} loading={isPending} />
             </EntranceItem>
 
-            {/* P4 — Event Impact (col-span-6) */}
-            <EntranceItem className="col-span-12 lg:col-span-6">
+            {/* P4 — Event Impact (6 cols at xl) */}
+            <EntranceItem className="min-h-[260px] xl:col-span-6">
               <EventImpactPanel result={selectedResult} loading={isPending} />
             </EntranceItem>
 
-            {/* P5 — Seasonal Trend (col-span-6) */}
-            <EntranceItem className="col-span-12 lg:col-span-6">
+            {/* P5 — Seasonal Trend (6 cols at xl) */}
+            <EntranceItem className="min-h-[260px] xl:col-span-6">
               <SeasonalPanel result={selectedResult} loading={isPending} />
             </EntranceItem>
 
-            {/* P6 — Inventory Risk (col-span-6) */}
-            <EntranceItem className="col-span-12 lg:col-span-6">
+            {/* P6 — Inventory Risk (6 cols at xl) */}
+            <EntranceItem className="min-h-[300px] xl:col-span-6">
               <InventoryRiskPanel result={selectedResult} loading={isPending} />
             </EntranceItem>
 
-            {/* P7 — Explainability (col-span-6) */}
-            <EntranceItem className="col-span-12 lg:col-span-6">
+            {/* P7 — Explainability (6 cols at xl) */}
+            <EntranceItem className="min-h-[300px] xl:col-span-6">
               <ExplainabilityPanel result={selectedResult} loading={isPending} />
             </EntranceItem>
 

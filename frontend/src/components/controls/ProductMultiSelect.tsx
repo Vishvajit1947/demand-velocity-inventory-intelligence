@@ -82,7 +82,7 @@ export function ProductMultiSelect({
       <div
         className="flex flex-wrap gap-2"
         role="group"
-        aria-label="Product selection"
+        aria-label="Products"
       >
         {loading
           ? // Loading skeleton: 8 pill-shaped placeholders
@@ -96,11 +96,11 @@ export function ProductMultiSelect({
           : products.map((p) => (
               <Chip
                 key={p.series_id}
-                label={p.name}
                 active={selected.has(p.series_id)}
-                onClick={() => toggle(p.series_id)}
-                aria-pressed={selected.has(p.series_id)}
-              />
+                onToggle={() => toggle(p.series_id)}
+              >
+                {p.name}
+              </Chip>
             ))}
       </div>
     </div>

@@ -93,3 +93,18 @@
     animation: none;
   }
 }
+
+/* MT-43 / MT-32 — animated background keyframes (06 §3).
+   Blobs drift slowly; frozen by the global prefers-reduced-motion rule above. */
+@layer utilities {
+  @keyframes drift1 {
+    0%,
+    100% { transform: translate(0, 0); }
+    50%  { transform: translate(60px, 40px); }
+  }
+  @keyframes drift2 {
+    0%,
+    100% { transform: translate(0, 0); }
+    50%  { transform: translate(-50px, -30px); }
+  }
+}

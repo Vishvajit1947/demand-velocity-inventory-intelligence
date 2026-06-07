@@ -8,7 +8,7 @@ const config: Config = {
       colors: {
         // 06 §2 Color tokens (LOCKED)
         base: "#070B14",
-        panel: "rgba(18, 26, 44, 0.55)",
+        panel: "rgba(18, 26, 44, 0.62)", /* MT-43 — bumped 0.55→0.62 for ≥4.5:1 contrast (06 §6) */
         "panel-solid": "#0E1626",
         "border-glass": "rgba(120, 160, 255, 0.12)",
         "text-primary": "#E8EEF9",

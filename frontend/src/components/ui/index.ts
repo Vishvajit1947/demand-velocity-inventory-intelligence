@@ -13,3 +13,5 @@ export { PanelState, IDLE_PROMPT } from "./PanelState";
 export type { PanelStateProps } from "./PanelState";
 export { ToastHost } from "./ToastHost";
 export { EntranceList, EntranceItem } from "./EntranceList";
+// MT-43
+export { AnimatedBackground } from "./AnimatedBackground";
