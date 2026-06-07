@@ -18,7 +18,10 @@ export type { SeasonalPanelProps } from "./SeasonalPanel";
 export { InventoryRiskPanel } from "./InventoryRiskPanel";
 export type { InventoryRiskPanelProps } from "./InventoryRiskPanel";
 
-// TODO(MT-41): ExplainabilityPanel (06 §4 / §8).
+// MT-41
+export { ExplainabilityPanel } from "./ExplainabilityPanel";
+export type { ExplainabilityPanelProps } from "./ExplainabilityPanel";
+
 export { ForecastResult } from "./ForecastResult";
 export type { ForecastResultProps } from "./ForecastResult";
 
