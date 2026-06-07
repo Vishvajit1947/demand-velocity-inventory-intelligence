@@ -1,18 +1,31 @@
 /**
  * App — root shell with lifted forecast state (MT-32 wiring, 06 §3).
- * Owns: selectedDate, selectedIds, useForecastMutation.
- * Passes controlled props + callbacks down to ForecastControlBar (MT-33).
- * Downstream panels (MT-34…41) receive `forecastData` once the mutation resolves.
+ * MT-42 edit: ToastProvider + ToastHost, EntranceList/EntranceItem panel grid,
+ * all seven panels (MT-34…41) rendered and wrapped via PanelState.
  */
 import { useEffect, useState } from "react";
 import { ForecastControlBar } from "./components/controls/ForecastControlBar";
 import { useBounds, useForecastMutation } from "./hooks/useForecast";
+import { ToastProvider } from "./components/ui/Toast";
+import { ToastHost } from "./components/ui/ToastHost";
+import { EntranceList, EntranceItem } from "./components/ui/EntranceList";
+import {
+  ExecutiveOverview,
+  ForecastResult,
+  VelocityPanel,
+  EventImpactPanel,
+  SeasonalPanel,
+  InventoryRiskPanel,
+  ExplainabilityPanel,
+} from "./components/panels";
 import type { ForecastRequest, ForecastResponse, SeriesId } from "./lib/types";
 
 export default function App() {
   // ── Lifted control-bar state (MT-32) ──────────────────────────────────
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [selectedIds, setSelectedIds] = useState<SeriesId[]>([]);
+  // Active product (for per-product panels) — defaults to first result
+  const [activeSeriesId, setActiveSeriesId] = useState<string | undefined>(undefined);
 
   // ── Default date to last_selectable_date once bounds load (06 §4) ──────
   const { data: bounds } = useBounds();
@@ -29,44 +42,102 @@ export default function App() {
     forecast.mutate(payload);
   }
 
-  // forecastData is available for downstream panels (MT-34…41).
   const forecastData: ForecastResponse | undefined = forecast.data;
 
+  // When new forecast data arrives, default the active product to the first result
+  useEffect(() => {
+    if (forecastData?.results?.[0] && !activeSeriesId) {
+      setActiveSeriesId(forecastData.results[0].series_id);
+    }
+  }, [forecastData, activeSeriesId]);
+
+  // When forecast reruns, reset the active series to the first result
+  useEffect(() => {
+    if (forecastData?.results?.[0]) {
+      setActiveSeriesId(forecastData.results[0].series_id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [forecastData?.start_date]);
+
+  // The selected product's ForecastResult slice (for single-product panels)
+  const selectedResult =
+    forecastData?.results?.find((r) => r.series_id === activeSeriesId) ??
+    forecastData?.results?.[0];
+
+  const isPending = forecast.isPending;
+
   return (
-    <div className="min-h-screen bg-base text-text-primary font-sans">
-      {/* ── Sticky control bar ─────────────────────────────────────────── */}
-      <ForecastControlBar
-        selectedDate={selectedDate}
-        selectedIds={selectedIds}
-        isPending={forecast.isPending}
-        onDateChange={setSelectedDate}
-        onProductsChange={setSelectedIds}
-        onSubmit={handleSubmit}
-      />
+    <ToastProvider>
+      {/* MT-42: fire toast on forecast error (05 §7 message) */}
+      <ToastHost error={forecast.error} status={forecast.status} />
 
-      {/* ── Main content area (MT-36…41 panels go here) ────────────────── */}
-      <main className="mx-auto max-w-screen-2xl px-6 py-8">
-        {/* Idle state — no forecast run yet (06 §5) */}
-        {!forecastData && !forecast.isPending && (
-          <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3 text-center">
-            <p className="text-h2 text-text-muted font-display">
-              Select a date &amp; products, then Forecast
-            </p>
-            <p className="text-body text-text-muted">
-              Results will appear here after your first forecast run.
-            </p>
-          </div>
-        )}
+      <div className="min-h-screen bg-base text-text-primary font-sans">
+        {/* ── Sticky control bar ─────────────────────────────────────────── */}
+        <ForecastControlBar
+          selectedDate={selectedDate}
+          selectedIds={selectedIds}
+          isPending={isPending}
+          onDateChange={setSelectedDate}
+          onProductsChange={setSelectedIds}
+          onSubmit={handleSubmit}
+        />
 
-        {/* Error state — toast shown by MT-42; panels keep last good data */}
-        {forecast.isError && (
-          <p className="text-caption text-accent-rose text-center mt-4">
-            {forecast.error?.message ?? "An unexpected error occurred."}
-          </p>
-        )}
+        {/* ── Main content area ──────────────────────────────────────────── */}
+        <main className="mx-auto max-w-screen-2xl px-6 py-8">
+          {/*
+           * MT-42: EntranceList wraps the panel grid so the staggered entrance
+           * (fade + 12px rise, stagger 0.06s, 06 §2) fires once on Success.
+           * Each EntranceItem carries the hover micro-interaction (scale 1.01 + glow).
+           */}
+          <EntranceList className="grid grid-cols-12 gap-6">
 
-        {/* TODO(MT-36…41): Executive Overview + analytical panels */}
-      </main>
-    </div>
+            {/* P1 — Executive Overview (col-span-12) */}
+            <EntranceItem className="col-span-12">
+              <ExecutiveOverview
+                summary={forecastData?.summary}
+                loading={isPending}
+              />
+            </EntranceItem>
+
+            {/* P2 — Forecast Result (col-span-8) */}
+            <EntranceItem className="col-span-12 xl:col-span-8">
+              <ForecastResult
+                results={forecastData?.results ?? []}
+                activeSeriesId={activeSeriesId}
+                onActiveChange={setActiveSeriesId}
+                startDate={forecastData?.start_date ?? selectedDate}
+                loading={isPending}
+              />
+            </EntranceItem>
+
+            {/* P3 — Velocity (col-span-4) */}
+            <EntranceItem className="col-span-12 xl:col-span-4">
+              <VelocityPanel result={selectedResult} loading={isPending} />
+            </EntranceItem>
+
+            {/* P4 — Event Impact (col-span-6) */}
+            <EntranceItem className="col-span-12 lg:col-span-6">
+              <EventImpactPanel result={selectedResult} loading={isPending} />
+            </EntranceItem>
+
+            {/* P5 — Seasonal Trend (col-span-6) */}
+            <EntranceItem className="col-span-12 lg:col-span-6">
+              <SeasonalPanel result={selectedResult} loading={isPending} />
+            </EntranceItem>
+
+            {/* P6 — Inventory Risk (col-span-6) */}
+            <EntranceItem className="col-span-12 lg:col-span-6">
+              <InventoryRiskPanel result={selectedResult} loading={isPending} />
+            </EntranceItem>
+
+            {/* P7 — Explainability (col-span-6) */}
+            <EntranceItem className="col-span-12 lg:col-span-6">
+              <ExplainabilityPanel result={selectedResult} loading={isPending} />
+            </EntranceItem>
+
+          </EntranceList>
+        </main>
+      </div>
+    </ToastProvider>
   );
 }

@@ -1,5 +1,6 @@
 /**
  * ForecastResult — hero line chart: actual vs forecast demand (MT-34).
+ * MT-42 edit: added `loading` prop + PanelState wrapper (06 §5).
  * 06 §4 "P2 — Forecast Result"; §2 tokens/motion; §3 multi-product + ProductSwitcher.
  * Pure presentational — data passed as props from App (MT-32); no fetching here.
  */
@@ -19,6 +20,8 @@ import {
 import { GlassPanel } from "../ui/GlassPanel";
 import { SectionTitle } from "../ui/SectionTitle";
 import { ProductSwitcher } from "../ui/ProductSwitcher";
+import { Skeleton } from "../ui/Skeleton";
+import { PanelState } from "../ui/PanelState";
 import type { ForecastResult as ForecastResultData } from "../../lib/types";
 import { formatDate, formatNumber } from "../../lib/format";
 
@@ -47,6 +50,8 @@ export interface ForecastResultProps {
   onActiveChange?: (seriesId: string) => void;
   /** Top-level start_date from the forecast response (the "now" divider). */
   startDate: string;
+  /** MT-42: True while the POST /api/forecast mutation is in flight (06 §5 Loading). */
+  loading?: boolean;
 }
 
 // ── Internal chart row type ──────────────────────────────────────────────────
@@ -63,33 +68,79 @@ export function ForecastResult({
   activeSeriesId,
   onActiveChange,
   startDate,
+  loading = false,
 }: ForecastResultProps) {
-  const reducedMotion = useReducedMotion();
   // legend visibility: keys are "actual" and "forecast_<series_id>"
   const [hidden, setHidden] = useState<Set<string>>(new Set());
 
-  // ── Empty / idle state (06 §5) ───────────────────────────────────────────
-  if (!results || results.length === 0) {
-    return (
-      <GlassPanel className="flex h-[420px] flex-col">
-        <SectionTitle title="Forecast Result" />
-        <div className="flex flex-1 items-center justify-center">
-          <p className="text-body text-[var(--text-muted)]">
-            Select a date &amp; products, then Forecast.
-          </p>
-        </div>
-      </GlassPanel>
-    );
-  }
+  const hasData = results.length > 0;
+  // skeleton: one tall block (MT-42, 06 §5 Loading)
+  const skeleton = <Skeleton className="h-[320px] w-full rounded-card" />;
 
-  // Resolve the active product (fall back to first if not found)
-  const active =
-    results.find((r) => r.series_id === activeSeriesId) ?? results[0];
-
+  // Resolve active product (only needed when hasData)
+  const active = hasData
+    ? (results.find((r) => r.series_id === activeSeriesId) ?? results[0])
+    : null;
   const isMulti = results.length > 1;
 
+  return (
+    <GlassPanel className="flex flex-col">
+      {/* ── Panel header — always visible ─────────────────────────────── */}
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-4">
+        <SectionTitle title="Forecast Result" className="mb-0" />
+        {hasData && isMulti && active && (
+          <ProductSwitcher
+            options={results.map((r) => ({ id: r.series_id, label: r.product_name }))}
+            value={active.series_id}
+            onChange={(id) => onActiveChange?.(id)}
+          />
+        )}
+      </div>
+
+      {/* MT-42: PanelState for Loading / Idle / Success states */}
+      <PanelState
+        loading={loading}
+        hasData={hasData}
+        skeleton={skeleton}
+        minHeight={360}
+      >
+        {/* Only rendered when hasData=true — active is guaranteed non-null here */}
+        {active && (
+          <ChartBody
+            results={results}
+            active={active}
+            isMulti={isMulti}
+            startDate={startDate}
+            hidden={hidden}
+            setHidden={setHidden}
+          />
+        )}
+      </PanelState>
+    </GlassPanel>
+  );
+}
+
+// ── Chart body — only rendered on Success (hasData=true) ────────────────────
+interface ChartBodyProps {
+  results: ForecastResultData[];
+  active: ForecastResultData;
+  isMulti: boolean;
+  startDate: string;
+  hidden: Set<string>;
+  setHidden: React.Dispatch<React.SetStateAction<Set<string>>>;
+}
+
+function ChartBody({
+  results,
+  active,
+  isMulti,
+  startDate,
+  hidden,
+  setHidden,
+}: ChartBodyProps) {
+  const reducedMotion = useReducedMotion();
+
   // ── Build unified x-axis rows (06 §4): 84 history + 28 horizon = 112 ────
-  // eslint-disable-next-line react-hooks/rules-of-hooks
   const rows = useMemo<Row[]>(() => {
     const byDate = new Map<string, Row>();
 
@@ -102,7 +153,7 @@ export function ForecastResult({
       });
     });
 
-    // 2) Horizon rows for the active product → actual = actual[i], forecast = forecast[i]
+    // 2) Horizon rows → actual = actual[i], forecast = forecast[i]
     active.horizon_dates.forEach((d, i) => {
       const existing = byDate.get(d);
       const row: Row = existing ?? { date: d, actual: null, forecast: null };
@@ -111,8 +162,7 @@ export function ForecastResult({
       byDate.set(d, row);
     });
 
-    // 3) Add per-product forecast columns for the multi overlay
-    //    key = `forecast_<series_id>`, history rows remain null (connectNulls=false)
+    // 3) Per-product forecast columns for multi overlay
     results.forEach((r) => {
       r.horizon_dates.forEach((d, i) => {
         const existing = byDate.get(d);
@@ -127,14 +177,11 @@ export function ForecastResult({
     );
   }, [results, active]);
 
-  const lastHorizonDate =
-    active.horizon_dates[active.horizon_dates.length - 1];
+  const lastHorizonDate = active.horizon_dates[active.horizon_dates.length - 1];
 
-  // Thin x-axis ticks: show every 14th date + always include startDate + last horizon
+  // Thin x-axis ticks: every 14th date + always include startDate + last horizon
   const xTicks = useMemo(() => {
-    const base = rows
-      .filter((_, i) => i % 14 === 0)
-      .map((r) => r.date);
+    const base = rows.filter((_, i) => i % 14 === 0).map((r) => r.date);
     const extra = [startDate, lastHorizonDate];
     return Array.from(new Set([...base, ...extra])).sort();
   }, [rows, startDate, lastHorizonDate]);
@@ -147,30 +194,9 @@ export function ForecastResult({
     });
   }
 
-  // ProductSwitcher options
-  const switcherOptions = results.map((r) => ({
-    id: r.series_id,
-    label: r.product_name,
-  }));
-
   return (
-    <GlassPanel className="flex flex-col">
-      {/* ── Panel header ──────────────────────────────────────────────── */}
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-4">
-        <SectionTitle
-          title="Forecast Result"
-          className="mb-0"
-        />
-        {isMulti && (
-          <ProductSwitcher
-            options={switcherOptions}
-            value={active.series_id}
-            onChange={(id) => onActiveChange?.(id)}
-          />
-        )}
-      </div>
-
-      {/* ── Custom legend with toggle (06 §4) ────────────────────────── */}
+    <>
+      {/* ── Custom legend with toggle (06 §4) ─────────────────────────── */}
       <div className="mb-2 flex flex-wrap gap-3" role="list" aria-label="Chart series legend">
         <LegendItem
           color={MUTED_CYAN}
@@ -193,23 +219,12 @@ export function ForecastResult({
         })}
       </div>
 
-      {/* ── Chart ─────────────────────────────────────────────────────── */}
-      {/* Fixed height prevents layout shift (06 §6) */}
+      {/* ── Chart ──────────────────────────────────────────────────────── */}
       <div className="h-[360px] w-full">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart
-            data={rows}
-            margin={{ top: 8, right: 16, bottom: 8, left: 0 }}
-          >
-            {/* SVG glow filter for the active forecast line (06 §2 "Glow utility") */}
+          <LineChart data={rows} margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
             <defs>
-              <filter
-                id="forecast-glow"
-                x="-20%"
-                y="-20%"
-                width="140%"
-                height="140%"
-              >
+              <filter id="forecast-glow" x="-20%" y="-20%" width="140%" height="140%">
                 <feGaussianBlur stdDeviation="3" result="blur" />
                 <feMerge>
                   <feMergeNode in="blur" />
@@ -271,7 +286,7 @@ export function ForecastResult({
               }}
             />
 
-            {/* ── Actual series: solid muted-cyan, all 112 points (06 §4) ── */}
+            {/* Actual series: solid muted-cyan (06 §4) */}
             {!hidden.has("actual") && (
               <Line
                 type="monotone"
@@ -286,13 +301,11 @@ export function ForecastResult({
               />
             )}
 
-            {/* ── Forecast line(s): horizon-only, connectNulls=false (06 §4) */}
+            {/* Forecast line(s): horizon-only (06 §4) */}
             {(isMulti
               ? results.map((r, idx) => ({ r, idx }))
               : [{ r: active, idx: 0 }]
             ).map(({ r, idx }) => {
-              // In single-product mode the column name is "forecast" (built by the
-              // active-product horizon loop); in multi mode it's "forecast_<series_id>".
               const dataKey = isMulti ? `forecast_${r.series_id}` : "forecast";
               if (hidden.has(`forecast_${r.series_id}`)) return null;
               const isActiveLine = r.series_id === active.series_id;
@@ -315,7 +328,7 @@ export function ForecastResult({
           </LineChart>
         </ResponsiveContainer>
       </div>
-    </GlassPanel>
+    </>
   );
 }
 
@@ -340,7 +353,6 @@ function LegendItem({ color, label, dimmed, onClick }: LegendItemProps) {
         dimmed ? "opacity-40" : "opacity-100",
       ].join(" ")}
     >
-      {/* Color chip — always paired with text label (06 §6, color never alone) */}
       <span
         className="inline-block h-2.5 w-2.5 shrink-0 rounded-full"
         style={{ background: color, boxShadow: `0 0 8px ${color}` }}
@@ -351,7 +363,7 @@ function LegendItem({ color, label, dimmed, onClick }: LegendItemProps) {
   );
 }
 
-// ── Custom tooltip (06 §4) ───────────────────────────────────────────────────
+// ── Custom tooltip (06 §4) ────────────────────────────────────────────────────
 interface TooltipPayloadEntry {
   dataKey: string;
   value: number | null;
@@ -375,8 +387,6 @@ function ForecastTooltip({ active, payload, label }: TooltipProps) {
 
   const actualVal = actualEntry?.value ?? null;
   const forecastVal = forecastEntry?.value ?? null;
-
-  // Nothing meaningful to show
   if (actualVal == null && forecastVal == null) return null;
 
   return (
@@ -392,14 +402,12 @@ function ForecastTooltip({ active, payload, label }: TooltipProps) {
       </p>
       {actualVal != null && (
         <p className="text-[var(--text-primary)]">
-          Actual:{" "}
-          <span className="font-[JetBrains_Mono]">{formatNumber(actualVal)}</span>
+          Actual: <span className="font-[JetBrains_Mono]">{formatNumber(actualVal)}</span>
         </p>
       )}
       {forecastVal != null && (
         <p style={{ color: "var(--accent-cyan)" }}>
-          Forecast:{" "}
-          <span className="font-[JetBrains_Mono]">{formatNumber(forecastVal, 1)}</span>
+          Forecast: <span className="font-[JetBrains_Mono]">{formatNumber(forecastVal, 1)}</span>
         </p>
       )}
     </div>

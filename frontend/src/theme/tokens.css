@@ -24,3 +24,16 @@
   --shadow-panel:  0 8px 40px rgba(0, 0, 0, 0.45);
   --blur-panel:    18px;
 }
+
+/* MT-42 — hover glow (06 §2). Box-shadow only (safe under reduced motion). */
+.panel-hover-glow {
+  transition: box-shadow 0.25s ease;
+}
+.panel-hover-glow:hover {
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.45),
+              0 0 0 1px var(--border-glass),
+              0 0 28px rgba(47, 230, 255, 0.18); /* accent-cyan @18% (06 §2 glow) */
+}
+@media (prefers-reduced-motion: reduce) {
+  .panel-hover-glow { transition: none; }
+}

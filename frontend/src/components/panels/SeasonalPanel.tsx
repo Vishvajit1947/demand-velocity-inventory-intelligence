@@ -1,10 +1,12 @@
 /**
- * SeasonalPanel — P5 Seasonal Trend.
- * 06 §4 P5: 12-bar monthly chart (current month highlighted) + 7-bar weekday pattern (Sat→Fri).
- * Data source: ForecastResult.seasonal (05 §5).
+ * SeasonalPanel — P5 Seasonal Trend (MT-39).
+ * MT-42 edit: added `loading?` + `result?` props + PanelState wrapper (06 §5).
+ *
+ * 12-bar monthly chart (current month highlighted) + 7-bar weekday pattern (Sat→Fri).
+ * 06 §4 P5, §2 tokens, §7 Recharts, §2 Motion, §6 a11y.
  */
 import { useMemo } from "react";
-import { motion, useReducedMotion } from "framer-motion";
+import { useReducedMotion } from "framer-motion";
 import {
   BarChart,
   Bar,
@@ -17,24 +19,19 @@ import {
 } from "recharts";
 import { GlassPanel } from "../ui/GlassPanel";
 import { SectionTitle } from "../ui/SectionTitle";
+import { Skeleton } from "../ui/Skeleton";
+import { PanelState } from "../ui/PanelState";
 import { signedPct } from "../../lib/format";
 import type { ForecastResult } from "../../lib/types";
 
-// ── Design tokens (06 §2) ───────────────────────────────────────────────────
-const CYAN = "#2FE6FF";   // --accent-cyan   : highlighted month bar
-const VIOLET = "#8B5CFF"; // --accent-violet : non-current months
-const MUTED = "#8A97B2";  // --text-muted    : axis ticks
-const GRID = "rgba(120, 160, 255, 0.08)"; // --grid-line
+// ── Design tokens (06 §2) ─────────────────────────────────────────────────────
+const CYAN   = "#2FE6FF";
+const VIOLET = "#8B5CFF";
+const MUTED  = "#8A97B2";
+const GRID   = "rgba(120, 160, 255, 0.08)";
 
-// ── Label arrays ────────────────────────────────────────────────────────────
-const MONTHS = [
-  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-];
-
-// 05 §5 / 02 data spec: wday 1..7 = Saturday..Friday.
-// Array index 0..6 maps directly — render in array order, do NOT re-sort.
-const WEEKDAYS = ["Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri"];
+const MONTHS   = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const WEEKDAYS = ["Sat","Sun","Mon","Tue","Wed","Thu","Fri"];
 
 const tooltipStyle: React.CSSProperties = {
   background: "#0E1626",
@@ -44,71 +41,112 @@ const tooltipStyle: React.CSSProperties = {
   fontFamily: "JetBrains Mono, monospace",
 };
 
-// ── Props ────────────────────────────────────────────────────────────────────
 export interface SeasonalPanelProps {
-  result: ForecastResult;
+  /** Optional until first forecast. */
+  result?: ForecastResult;
+  /** MT-42: shows skeleton while true (06 §5 Loading). */
+  loading?: boolean;
 }
 
-// ── Component ────────────────────────────────────────────────────────────────
-export function SeasonalPanel({ result }: SeasonalPanelProps) {
+export function SeasonalPanel({ result, loading = false }: SeasonalPanelProps) {
+  // MT-42 skeleton: tall chart block + smaller row (06 §5).
+  const skeleton = (
+    <div className="flex flex-col gap-3">
+      <Skeleton className="h-[180px] w-full rounded-card" />
+      <Skeleton className="h-12 w-full rounded-card" />
+    </div>
+  );
+
+  return (
+    <GlassPanel animate={false}>
+      <div className="flex h-full flex-col gap-4" data-testid="seasonal-panel">
+        <SectionTitle title="Seasonal Trend" />
+        <PanelState
+          loading={loading}
+          hasData={!!result}
+          skeleton={skeleton}
+          minHeight={260}
+        >
+          {result && <SeasonalContent result={result} />}
+        </PanelState>
+      </div>
+    </GlassPanel>
+  );
+}
+
+function SeasonalContent({ result }: { result: ForecastResult }) {
   const reduce = useReducedMotion();
   const { month, month_vs_avg_pct, monthly_avg, weekday_avg } = result.seasonal;
 
-  // Build row data for Recharts.
-  // monthly: idx is 1-based month number for comparison with seasonal.month.
   const monthRows = useMemo(
     () => (monthly_avg ?? []).map((value, i) => ({ label: MONTHS[i], value, idx: i + 1 })),
     [monthly_avg],
   );
 
-  // weekday: render array as-is (Sat→Fri per contract).
   const weekdayRows = useMemo(
     () => (weekday_avg ?? []).map((value, i) => ({ label: WEEKDAYS[i], value })),
     [weekday_avg],
   );
 
-  // Safe month name (guard against out-of-range values)
   const monthName = MONTHS[(month - 1 + 12) % 12];
 
   return (
-    // animate=false so GlassPanel doesn't apply its own entrance variants on top of ours
-    <GlassPanel animate={false}>
-      <motion.div
-        initial={reduce ? false : { opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-        className="flex h-full flex-col gap-4"
-        data-testid="seasonal-panel"
+    <>
+      {/* Callout */}
+      <p
+        className="text-[14px]"
+        style={{ color: "#E8EEF9", fontFamily: "Inter, sans-serif" }}
+        data-testid="seasonal-callout"
       >
-        {/* Header */}
-        <SectionTitle title="Seasonal Trend" />
+        {monthName} runs{" "}
+        <span style={{ color: CYAN, fontFamily: "JetBrains Mono, monospace", fontWeight: 600 }}>
+          {signedPct(month_vs_avg_pct)}
+        </span>{" "}
+        vs average
+      </p>
 
-        {/* Callout — 06 §4 P5 */}
-        <p
-          className="text-[14px]"
-          style={{ color: "#E8EEF9", fontFamily: "Inter, sans-serif" }}
-          data-testid="seasonal-callout"
-        >
-          {monthName} runs{" "}
-          <span
-            style={{
-              color: CYAN,
-              fontFamily: "JetBrains Mono, monospace",
-              fontWeight: 600,
-            }}
-          >
-            {signedPct(month_vs_avg_pct)}
-          </span>{" "}
-          vs average
-        </p>
+      {/* (a) Monthly bars — 12 bars */}
+      <div style={{ width: "100%", height: 170 }} data-testid="monthly-chart">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={monthRows} margin={{ top: 8, right: 8, bottom: 0, left: -16 }}>
+            <CartesianGrid vertical={false} stroke={GRID} />
+            <XAxis
+              dataKey="label"
+              tick={{ fill: MUTED, fontFamily: "Inter, sans-serif", fontSize: 11 }}
+              stroke={GRID}
+              interval={0}
+            />
+            <YAxis
+              tick={{ fill: MUTED, fontFamily: "JetBrains Mono, monospace", fontSize: 10 }}
+              stroke={GRID}
+            />
+            <Tooltip cursor={{ fill: "rgba(120,160,255,0.06)" }} contentStyle={tooltipStyle} />
+            <Bar dataKey="value" radius={[6, 6, 0, 0]} isAnimationActive={!reduce}>
+              {monthRows.map((r) => {
+                const active = r.idx === month;
+                return (
+                  <Cell
+                    key={r.label}
+                    fill={active ? CYAN : VIOLET}
+                    fillOpacity={active ? 1 : 0.35}
+                    data-testid={`month-${r.label}`}
+                    data-active={active ? "true" : "false"}
+                  />
+                );
+              })}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
 
-        {/* (a) Monthly bars — 12 bars, Jan…Dec */}
-        <div style={{ width: "100%", height: 170 }} data-testid="monthly-chart">
+      {/* (b) Weekday bars — 7 bars, Sat→Fri */}
+      <div className="flex flex-col gap-1">
+        <span className="text-[12px]" style={{ color: MUTED, fontFamily: "Inter, sans-serif" }}>
+          Weekday pattern (Sat→Fri)
+        </span>
+        <div style={{ width: "100%", height: 110 }} data-testid="weekday-chart">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart
-              data={monthRows}
-              margin={{ top: 8, right: 8, bottom: 0, left: -16 }}
-            >
+            <BarChart data={weekdayRows} margin={{ top: 4, right: 8, bottom: 0, left: -16 }}>
               <CartesianGrid vertical={false} stroke={GRID} />
               <XAxis
                 dataKey="label"
@@ -120,73 +158,17 @@ export function SeasonalPanel({ result }: SeasonalPanelProps) {
                 tick={{ fill: MUTED, fontFamily: "JetBrains Mono, monospace", fontSize: 10 }}
                 stroke={GRID}
               />
-              <Tooltip
-                cursor={{ fill: "rgba(120,160,255,0.06)" }}
-                contentStyle={tooltipStyle}
-              />
-              <Bar dataKey="value" radius={[6, 6, 0, 0]} isAnimationActive={!reduce}>
-                {monthRows.map((r) => {
-                  const active = r.idx === month;
-                  return (
-                    <Cell
-                      key={r.label}
-                      fill={active ? CYAN : VIOLET}
-                      fillOpacity={active ? 1 : 0.35}
-                      data-testid={`month-${r.label}`}
-                      data-active={active ? "true" : "false"}
-                    />
-                  );
-                })}
+              <Tooltip cursor={{ fill: "rgba(120,160,255,0.06)" }} contentStyle={tooltipStyle} />
+              <Bar dataKey="value" radius={[5, 5, 0, 0]} isAnimationActive={!reduce}>
+                {weekdayRows.map((r) => (
+                  <Cell key={r.label} fill={CYAN} fillOpacity={0.55} data-testid={`weekday-${r.label}`} />
+                ))}
               </Bar>
             </BarChart>
           </ResponsiveContainer>
         </div>
-
-        {/* (b) Weekday bars — 7 bars, Sat→Fri (wday 1→7 = array index 0→6) */}
-        <div className="flex flex-col gap-1">
-          <span
-            className="text-[12px]"
-            style={{ color: MUTED, fontFamily: "Inter, sans-serif" }}
-          >
-            Weekday pattern (Sat→Fri)
-          </span>
-          <div style={{ width: "100%", height: 110 }} data-testid="weekday-chart">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={weekdayRows}
-                margin={{ top: 4, right: 8, bottom: 0, left: -16 }}
-              >
-                <CartesianGrid vertical={false} stroke={GRID} />
-                <XAxis
-                  dataKey="label"
-                  tick={{ fill: MUTED, fontFamily: "Inter, sans-serif", fontSize: 11 }}
-                  stroke={GRID}
-                  interval={0}
-                />
-                <YAxis
-                  tick={{ fill: MUTED, fontFamily: "JetBrains Mono, monospace", fontSize: 10 }}
-                  stroke={GRID}
-                />
-                <Tooltip
-                  cursor={{ fill: "rgba(120,160,255,0.06)" }}
-                  contentStyle={tooltipStyle}
-                />
-                <Bar dataKey="value" radius={[5, 5, 0, 0]} isAnimationActive={!reduce}>
-                  {weekdayRows.map((r) => (
-                    <Cell
-                      key={r.label}
-                      fill={CYAN}
-                      fillOpacity={0.55}
-                      data-testid={`weekday-${r.label}`}
-                    />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      </motion.div>
-    </GlassPanel>
+      </div>
+    </>
   );
 }
 

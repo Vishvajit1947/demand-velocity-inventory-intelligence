@@ -16,6 +16,8 @@ import type { Data, Layout } from "plotly.js";
 import { GlassPanel } from "../ui/GlassPanel";
 import { StatusBadge } from "../ui/StatusBadge";
 import { SectionTitle } from "../ui/SectionTitle";
+import { Skeleton } from "../ui/Skeleton";
+import { PanelState } from "../ui/PanelState";
 import { signedPct } from "../../lib/format";
 import type { ForecastResult, VelocityStatus } from "../../lib/types";
 
@@ -64,8 +66,10 @@ function withAlpha(hex: string, alpha: number): string {
 // ── Component ────────────────────────────────────────────────────────────────
 
 export interface VelocityPanelProps {
-  /** The active product's full ForecastResult (05 §5). */
-  result: ForecastResult;
+  /** The active product's full ForecastResult (05 §5). Optional until first forecast. */
+  result?: ForecastResult;
+  /** MT-42: True while the POST /api/forecast mutation is in flight (06 §5 Loading). */
+  loading?: boolean;
 }
 
 /**
@@ -73,8 +77,33 @@ export interface VelocityPanelProps {
  * Renders a Plotly gauge+indicator. Framer Motion entrance. Reduced-motion safe.
  * 06 §4 P3.
  */
-export function VelocityPanel({ result }: VelocityPanelProps) {
+export function VelocityPanel({ result, loading = false }: VelocityPanelProps) {
   const reduce = useReducedMotion();
+
+  // MT-42 skeleton: circle + bar (06 §5 Loading).
+  const skeleton = (
+    <div className="flex flex-col items-center gap-4">
+      <Skeleton className="h-[220px] w-[220px] rounded-full" />
+      <Skeleton className="h-6 w-32 rounded-card" />
+    </div>
+  );
+
+  return (
+    <GlassPanel animate={false}>
+      <PanelState
+        loading={loading}
+        hasData={!!result}
+        skeleton={skeleton}
+        minHeight={300}
+      >
+        {result && <VelocityContent result={result} reduce={!!reduce} />}
+      </PanelState>
+    </GlassPanel>
+  );
+}
+
+/** The actual gauge + badge — only rendered when result is defined. */
+function VelocityContent({ result, reduce }: { result: ForecastResult; reduce: boolean }) {
   const { value, status } = result.velocity;
 
   // Needle clamped to arc bounds (06 §4 P3: "clamp display to arc");
@@ -150,75 +179,66 @@ export function VelocityPanel({ result }: VelocityPanelProps) {
   );
 
   return (
-    <GlassPanel
-      // GlassPanel already applies entrance variants; we add our own wrapper only
-      // for the inner content fade+rise to satisfy 06 §2 motion spec exactly.
-      animate={false}
+    <motion.div
+      initial={reduce ? false : { opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+      className="flex h-full flex-col gap-3"
+      data-testid="velocity-panel"
     >
-      <motion.div
-        initial={reduce ? false : { opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-        className="flex h-full flex-col gap-3"
-        data-testid="velocity-panel"
-      >
-        {/* Header — title + status badge */}
-        <div className="flex items-center justify-between">
-          <SectionTitle title="Velocity Intelligence" className="mb-0" />
-          <StatusBadge kind="velocity" status={status} />
-        </div>
+      {/* Header — title + status badge */}
+      <div className="flex items-center justify-between">
+        <SectionTitle title="Velocity Intelligence" className="mb-0" />
+        <StatusBadge kind="velocity" status={status} />
+      </div>
 
-        {/* Gauge area */}
-        <div className="relative flex-1" aria-hidden="false">
-          <Plot
-            data={data as Data[]}
-            layout={layout}
-            config={{
-              displayModeBar: false,
-              responsive: true,
-              // Disable all interactivity under reduced-motion (no drag/zoom).
-              staticPlot: !!reduce,
-            }}
-            style={{ width: "100%", height: "220px" }}
-            useResizeHandler
-            data-testid="velocity-gauge"
-          />
-
-          {/*
-           * Real (un-clamped) value overlay — 06 §4 P3.
-           * Plotly's built-in number shows the clamped gauge value (secondary, dimmed).
-           * This overlay shows the TRUE velocity (e.g. +412%) as the headline.
-           * Tests assert on this element's text content.
-           */}
-          <div
-            className="pointer-events-none absolute inset-x-0 bottom-8 text-center"
-            data-testid="velocity-value"
-            style={{
-              fontFamily: "JetBrains Mono, monospace",
-              fontVariantNumeric: "tabular-nums",
-              color: activeColor,
-              fontSize: 28,
-              fontWeight: 600,
-              textShadow: `0 0 18px ${withAlpha(activeColor, 0.45)}`,
-            }}
-          >
-            {signedPct(value)}
-          </div>
-        </div>
-
-        {/* Caption — "{signed}% vs prior 28 days" (06 §4 P3) */}
-        <p
-          className="text-center text-[12px]"
-          style={{
-            color: "var(--text-muted)",
-            fontFamily: "JetBrains Mono, monospace",
+      {/* Gauge area */}
+      <div className="relative flex-1" aria-hidden="false">
+        <Plot
+          data={data as Data[]}
+          layout={layout}
+          config={{
+            displayModeBar: false,
+            responsive: true,
+            staticPlot: !!reduce,
           }}
-          data-testid="velocity-caption"
+          style={{ width: "100%", height: "220px" }}
+          useResizeHandler
+          data-testid="velocity-gauge"
+        />
+
+        {/*
+         * Real (un-clamped) value overlay — 06 §4 P3.
+         * Tests assert on this element's text content.
+         */}
+        <div
+          className="pointer-events-none absolute inset-x-0 bottom-8 text-center"
+          data-testid="velocity-value"
+          style={{
+            fontFamily: "JetBrains Mono, monospace",
+            fontVariantNumeric: "tabular-nums",
+            color: activeColor,
+            fontSize: 28,
+            fontWeight: 600,
+            textShadow: `0 0 18px ${withAlpha(activeColor, 0.45)}`,
+          }}
         >
-          {signedPct(value)} vs prior 28 days
-        </p>
-      </motion.div>
-    </GlassPanel>
+          {signedPct(value)}
+        </div>
+      </div>
+
+      {/* Caption — "{signed}% vs prior 28 days" (06 §4 P3) */}
+      <p
+        className="text-center text-[12px]"
+        style={{
+          color: "var(--text-muted)",
+          fontFamily: "JetBrains Mono, monospace",
+        }}
+        data-testid="velocity-caption"
+      >
+        {signedPct(value)} vs prior 28 days
+      </p>
+    </motion.div>
   );
 }
 

@@ -98,14 +98,10 @@ describe("<ExecutiveOverview /> (MT-36)", () => {
     expect(eventsWrapper.getAttribute("title")).toBe("No events in this window");
   });
 
-  it("renders four placeholder cards when summary is undefined", () => {
+  it("shows the idle prompt when summary is undefined (MT-42 PanelState idle state)", () => {
     render(<ExecutiveOverview animate={false} />);
-    expect(screen.getByText("Total Predicted Demand")).toBeInTheDocument();
-    expect(screen.getByText("High-Risk Products")).toBeInTheDocument();
-    expect(screen.getByText("Avg Velocity")).toBeInTheDocument();
-    expect(screen.getByText("Active Events")).toBeInTheDocument();
-    // Placeholder footnote is "—"
-    expect(screen.getAllByText("—").length).toBeGreaterThanOrEqual(4);
+    // MT-42: PanelState idle branch — shows the empty prompt, not placeholder cards.
+    expect(screen.getByText("Select a date & products, then Forecast")).toBeInTheDocument();
   });
 
   it("velocity card shows TrendingUp icon class (positive velocity)", () => {

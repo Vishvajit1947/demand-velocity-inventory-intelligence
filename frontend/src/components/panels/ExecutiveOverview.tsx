@@ -13,6 +13,8 @@ import {
   CalendarClock,
 } from "lucide-react";
 import { StatCard } from "../ui/StatCard";
+import { Skeleton } from "../ui/Skeleton";
+import { PanelState } from "../ui/PanelState";
 import { accentStyle } from "../../lib/status";
 import { staggerContainer, entranceVariants } from "../../lib/motion";
 import { formatDate } from "../../lib/format";
@@ -24,6 +26,11 @@ export interface ExecutiveOverviewProps {
    * Undefined when no forecast has been run yet (06 §5 idle state).
    */
   summary?: Summary;
+  /**
+   * True while the POST /api/forecast mutation is in flight (06 §5 Loading).
+   * MT-42: PanelState shows the skeleton when loading.
+   */
+  loading?: boolean;
   /**
    * When false, entrance animation and count-up are disabled.
    * Useful for tests and SSR. Defaults to true.
@@ -41,38 +48,34 @@ function eventsTooltip(events: EventInfo[]): string {
 
 export function ExecutiveOverview({
   summary,
+  loading = false,
   animate = true,
 }: ExecutiveOverviewProps) {
-  // Idle / placeholder state — reserve heights, prevent layout shift (06 §5/§6).
-  if (!summary) {
-    return (
-      <motion.div
-        className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4"
-        variants={animate ? staggerContainer : undefined}
-        initial={animate ? "hidden" : false}
-        animate={animate ? "visible" : undefined}
-      >
-        {(
-          [
-            { title: "Total Predicted Demand", icon: <Package size={18} /> },
-            { title: "High-Risk Products", icon: <AlertTriangle size={18} /> },
-            { title: "Avg Velocity", icon: <TrendingUp size={18} /> },
-            { title: "Active Events", icon: <CalendarClock size={18} /> },
-          ] as const
-        ).map((p) => (
-          <motion.div key={p.title} variants={animate ? entranceVariants : undefined}>
-            <StatCard
-              title={p.title}
-              value={0}
-              icon={p.icon}
-              footnote="—"
-            />
-          </motion.div>
-        ))}
-      </motion.div>
-    );
-  }
+  // MT-42 skeleton: a row of 4 card-shaped skeleton blocks (06 §5 Loading).
+  const skeleton = (
+    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <Skeleton key={i} className="h-[120px] rounded-card" />
+      ))}
+    </div>
+  );
 
+  // MT-42: wrap in PanelState for all four states (06 §5).
+  // hasData = !!summary (summary arrives on first success; kept through errors).
+  return (
+    <PanelState
+      loading={loading}
+      hasData={!!summary}
+      skeleton={skeleton}
+      minHeight={140}
+    >
+      <SummaryCards summary={summary!} animate={animate} />
+    </PanelState>
+  );
+}
+
+/** The actual stat-card grid — only rendered when summary is defined. */
+function SummaryCards({ summary, animate }: { summary: Summary; animate: boolean }) {
   const highRisk = summary.high_risk_count;
   const velocity = summary.avg_velocity;
   const velocityPositive = velocity >= 0;
