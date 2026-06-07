@@ -18,18 +18,19 @@ describe("StatCard (MT-30)", () => {
   });
 
   it("renders the value in the document (may start at 0 while count-up animates in jsdom)", () => {
-    const { container } = render(<StatCard title="Total Demand" value={1234} />);
-    // react-countup animates; in jsdom we just verify the numeric wrapper renders.
-    // The value div is always present — check it exists by its class.
-    const valueEl = container.querySelector(".tabular.text-display");
-    expect(valueEl).toBeInTheDocument();
+    render(<StatCard title="Total Demand" value={1234} />);
+    // The title is always present; CountUp renders asynchronously but the container is there.
+    expect(screen.getByText(/Total Demand/i)).toBeInTheDocument();
+    // Under reduced-motion (setup.ts sets prefers-reduced-motion=true) CountUp is bypassed
+    // and the value renders as toFixed(0) = "1,234" or "1234".
+    expect(screen.getByText(/1[,.]?234/)).toBeInTheDocument();
   });
 
   it("renders prefix and suffix as text nodes around the CountUp span", () => {
-    const { container } = render(<StatCard title="Rate" value={42} prefix="$" suffix="k" />);
-    const valueEl = container.querySelector(".tabular.text-display");
-    expect(valueEl?.textContent).toContain("$");
-    expect(valueEl?.textContent).toContain("k");
+    render(<StatCard title="Rate" value={42} prefix="$" suffix="k" />);
+    // Under reduced-motion the value renders synchronously; the parent div contains all text.
+    expect(screen.getByText(/\$/)).toBeInTheDocument();
+    expect(screen.getByText(/k/)).toBeInTheDocument();
   });
 
   it("renders a positive delta with ▲ arrow", () => {

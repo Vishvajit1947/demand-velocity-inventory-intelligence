@@ -9,9 +9,10 @@ export default defineConfig({
     strictPort: true,
   },
   test: {
-    environment: "jsdom",
-    globals: true,
-    setupFiles: "./src/test/setup.ts",
+    environment: "jsdom",          // 07 §3
+    globals: true,                 // describe/it/expect without imports
+    setupFiles: ["./src/test/setup.ts"],
     css: true,
+    include: ["src/**/*.test.{ts,tsx}"],
   },
 });
