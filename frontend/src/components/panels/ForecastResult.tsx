@@ -222,7 +222,7 @@ function ChartBody({
       {/* ── Chart ──────────────────────────────────────────────────────── */}
       <div className="h-[360px] w-full">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={rows} margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
+          <LineChart data={rows} margin={{ top: 28, right: 16, bottom: 8, left: 0 }}>
             <defs>
               <filter id="forecast-glow" x="-20%" y="-20%" width="140%" height="140%">
                 <feGaussianBlur stdDeviation="3" result="blur" />
@@ -270,7 +270,6 @@ function ChartBody({
               x2={lastHorizonDate}
               fill="var(--accent-cyan)"
               fillOpacity={0.06}
-              ifOverflow="extendDomain"
             />
 
             {/* "now" vertical divider (06 §4) */}
@@ -280,9 +279,12 @@ function ChartBody({
               strokeDasharray="4 4"
               label={{
                 value: "now",
-                fill: "var(--accent-violet)",
+                fill: "#e2e8f0",
                 fontSize: 11,
-                position: "top",
+                fontWeight: 600,
+                fontFamily: "JetBrains Mono, monospace",
+                position: "insideTopRight",
+                offset: 6,
               }}
             />
 
