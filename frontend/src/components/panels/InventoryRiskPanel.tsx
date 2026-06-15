@@ -114,7 +114,7 @@ function InventoryRiskContent({ result }: { result: ForecastResult }) {
       {/* (b) Projected-stock line chart */}
       <div style={{ width: "100%", height: 180 }} data-testid="projected-stock-chart">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={rows} margin={{ top: 8, right: 12, bottom: 0, left: -12 }}>
+          <LineChart data={rows} margin={{ top: 28, right: 12, bottom: 0, left: -12 }}>
             <CartesianGrid stroke={GRID} />
             <XAxis
               dataKey="day"
@@ -158,9 +158,11 @@ function InventoryRiskContent({ result }: { result: ForecastResult }) {
                 strokeDasharray="2 3"
                 label={{
                   value: `Stockout ~D${inv.cover_days}`,
-                  position: "top",
+                  position: "insideTopLeft",
+                  offset: 6,
                   fill: ROSE,
                   fontSize: 11,
+                  fontWeight: 600,
                   fontFamily: "JetBrains Mono, monospace",
                 }}
                 data-testid="stockout-ref"
