@@ -84,7 +84,7 @@ export function ForecastResult({
   const isMulti = results.length > 1;
 
   return (
-    <GlassPanel className="flex flex-col">
+    <GlassPanel animate={false} className="flex flex-col">
       {/* ── Panel header — always visible ─────────────────────────────── */}
       <div className="mb-3 flex flex-wrap items-center justify-between gap-4">
         <SectionTitle title="Forecast Result" className="mb-0" />

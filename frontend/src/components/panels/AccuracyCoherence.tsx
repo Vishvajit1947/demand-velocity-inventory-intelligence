@@ -11,12 +11,16 @@
 import { RadialDial } from "../ui/RadialDial";
 import { GlassPanel } from "../ui/GlassPanel";
 import { SectionTitle } from "../ui/SectionTitle";
+import { Skeleton } from "../ui/Skeleton";
+import { PanelState } from "../ui/PanelState";
 import { accentStyle, type AccentStyle } from "../../lib/status";
 import type { Metrics } from "../../lib/types";
 
 export interface AccuracyCoherenceProps {
-  /** The active product's metrics slice (05 §5). */
-  metrics: Metrics;
+  /** The active product's metrics slice (05 §5). Optional until first forecast. */
+  metrics?: Metrics;
+  /** MT-42: shows skeleton while true (06 §5 Loading). */
+  loading?: boolean;
 }
 
 /** Accuracy band → {AccentStyle, word} — LOCKED thresholds (MT-35 §4). */
@@ -56,53 +60,70 @@ export function coherenceBand(
   return { accent, word };
 }
 
-export function AccuracyCoherence({ metrics }: AccuracyCoherenceProps) {
-  const acc = accuracyBand(metrics.accuracy);
-  const coh = coherenceBand(metrics.coherence, metrics.coherence_label);
+export function AccuracyCoherence({ metrics, loading = false }: AccuracyCoherenceProps) {
+  const acc = metrics ? accuracyBand(metrics.accuracy) : null;
+  const coh = metrics ? coherenceBand(metrics.coherence, metrics.coherence_label) : null;
+
+  const skeleton = (
+    <div className="flex items-center justify-around gap-6">
+      <Skeleton className="h-[132px] w-[132px] rounded-full" />
+      <Skeleton className="h-[132px] w-[132px] rounded-full" />
+    </div>
+  );
 
   return (
-    <GlassPanel className="flex flex-col gap-3">
+    <GlassPanel animate={false} className="flex flex-col gap-3">
       <SectionTitle title="Forecast Quality" />
+      <PanelState
+        loading={loading}
+        hasData={!!metrics}
+        skeleton={skeleton}
+        minHeight={220}
+      >
+        {metrics && acc && coh && (
+          <>
+            <div className="flex items-center justify-around gap-6">
+              {/* Accuracy dial */}
+              <div className="flex flex-col items-center gap-1" data-testid="dial-accuracy">
+                <RadialDial
+                  value={metrics.accuracy}
+                  label="Accuracy"
+                  accent={acc.accent}
+                />
+                <span
+                  className="text-caption font-inter"
+                  style={{ color: acc.accent.hex }}
+                  aria-label={`Accuracy band: ${acc.word}`}
+                >
+                  {acc.word}
+                </span>
+              </div>
 
-      <div className="flex items-center justify-around gap-6">
-        {/* Accuracy dial */}
-        <div className="flex flex-col items-center gap-1" data-testid="dial-accuracy">
-          <RadialDial
-            value={metrics.accuracy}
-            label="Accuracy"
-            accent={acc.accent}
-          />
-          <span
-            className="text-caption font-inter"
-            style={{ color: acc.accent.hex }}
-            aria-label={`Accuracy band: ${acc.word}`}
-          >
-            {acc.word}
-          </span>
-        </div>
+              {/* Coherence dial */}
+              <div className="flex flex-col items-center gap-1" data-testid="dial-coherence">
+                <RadialDial
+                  value={metrics.coherence}
+                  label="Coherence"
+                  accent={coh.accent}
+                />
+                <span
+                  className="text-caption font-inter"
+                  style={{ color: coh.accent.hex }}
+                  aria-label={`Coherence band: ${coh.word}`}
+                >
+                  {coh.word}
+                </span>
+              </div>
+            </div>
 
-        {/* Coherence dial */}
-        <div className="flex flex-col items-center gap-1" data-testid="dial-coherence">
-          <RadialDial
-            value={metrics.coherence}
-            label="Coherence"
-            accent={coh.accent}
-          />
-          <span
-            className="text-caption font-inter"
-            style={{ color: coh.accent.hex }}
-            aria-label={`Coherence band: ${coh.word}`}
-          >
-            {coh.word}
-          </span>
-        </div>
-      </div>
-
-      {/* sMAPE / MAE / RMSE caption — mono, tabular-nums, muted (06 §4 / §2 typography) */}
-      <p className="text-center text-caption text-text-muted font-mono tabular-nums">
-        sMAPE {metrics.smape.toFixed(1)} · MAE {metrics.mae.toFixed(2)} · RMSE{" "}
-        {metrics.rmse.toFixed(2)}
-      </p>
+            {/* sMAPE / MAE / RMSE caption */}
+            <p className="text-center text-caption text-text-muted font-mono tabular-nums">
+              sMAPE {metrics.smape.toFixed(1)} · MAE {metrics.mae.toFixed(2)} · RMSE{" "}
+              {metrics.rmse.toFixed(2)}
+            </p>
+          </>
+        )}
+      </PanelState>
     </GlassPanel>
   );
 }

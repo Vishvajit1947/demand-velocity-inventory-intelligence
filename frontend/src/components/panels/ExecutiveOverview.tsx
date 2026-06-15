@@ -12,6 +12,7 @@ import {
   TrendingDown,
   CalendarClock,
 } from "lucide-react";
+import { GlassPanel } from "../ui/GlassPanel";
 import { StatCard } from "../ui/StatCard";
 import { Skeleton } from "../ui/Skeleton";
 import { PanelState } from "../ui/PanelState";
@@ -62,14 +63,16 @@ export function ExecutiveOverview({
   // MT-42: wrap in PanelState for all four states (06 §5).
   // hasData = !!summary (summary arrives on first success; kept through errors).
   return (
-    <PanelState
-      loading={loading}
-      hasData={!!summary}
-      skeleton={skeleton}
-      minHeight={140}
-    >
-      <SummaryCards summary={summary!} animate={animate} />
-    </PanelState>
+    <GlassPanel animate={false}>
+      <PanelState
+        loading={loading}
+        hasData={!!summary}
+        skeleton={skeleton}
+        minHeight={140}
+      >
+        <SummaryCards summary={summary!} animate={animate} />
+      </PanelState>
+    </GlassPanel>
   );
 }
 

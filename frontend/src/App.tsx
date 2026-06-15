@@ -13,6 +13,7 @@ import { AnimatedBackground } from "./components/ui/AnimatedBackground";
 import {
   ExecutiveOverview,
   ForecastResult,
+  AccuracyCoherence,
   VelocityPanel,
   EventImpactPanel,
   SeasonalPanel,
@@ -127,12 +128,20 @@ export default function App() {
               <VelocityPanel result={selectedResult} loading={isPending} />
             </EntranceItem>
 
-            {/* P4 — Event Impact (6 cols at xl) */}
-            <EntranceItem className="min-h-[260px] xl:col-span-6">
+            {/* P4 — Forecast Quality / Accuracy & Coherence (4 cols at xl) */}
+            <EntranceItem className="min-h-[260px] xl:col-span-4">
+              <AccuracyCoherence
+                metrics={selectedResult?.metrics}
+                loading={isPending}
+              />
+            </EntranceItem>
+
+            {/* P5 — Event Impact (8 cols at xl) */}
+            <EntranceItem className="min-h-[260px] xl:col-span-8">
               <EventImpactPanel result={selectedResult} loading={isPending} />
             </EntranceItem>
 
-            {/* P5 — Seasonal Trend (6 cols at xl) */}
+            {/* P6 — Seasonal Trend (6 cols at xl) */}
             <EntranceItem className="min-h-[260px] xl:col-span-6">
               <SeasonalPanel result={selectedResult} loading={isPending} />
             </EntranceItem>
