@@ -57,12 +57,24 @@ const KIND_COLOR: Record<FactorKind, string> = {
   trend:    LIME,
 };
 
+// ── Shared tooltip styles (matches history chart) ────────────────────────────
 const tooltipStyle: React.CSSProperties = {
   background: "#0E1626",
   border: "1px solid rgba(120,160,255,0.12)",
   borderRadius: 10,
   color: "#E8EEF9",
   fontFamily: "JetBrains Mono, monospace",
+};
+
+const tooltipLabelStyle: React.CSSProperties = {
+  color: "#E8EEF9",
+  fontFamily: "Inter, sans-serif",
+  fontWeight: 600,
+  marginBottom: 4,
+};
+
+const tooltipItemStyle: React.CSSProperties = {
+  color: "#8A97B2",
 };
 
 type TabKey = "insights" | "deep";
@@ -211,7 +223,12 @@ function ExplainabilityContent({ result }: { result: ForecastResult }) {
                   <CartesianGrid stroke={GRID} />
                   <XAxis dataKey="date" tick={false} stroke={GRID} />
                   <YAxis tick={{ fill: MUTED, fontFamily: "JetBrains Mono, monospace", fontSize: 10 }} stroke={GRID} />
-                  <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => [formatNumber(v, 1), "units"]} />
+                  <Tooltip
+                    contentStyle={tooltipStyle}
+                    labelStyle={tooltipLabelStyle}
+                    itemStyle={tooltipItemStyle}
+                    formatter={(v: number) => [formatNumber(v, 1), "units"]}
+                  />
                   <Line
                     type="monotone"
                     dataKey="units"
@@ -227,8 +244,8 @@ function ExplainabilityContent({ result }: { result: ForecastResult }) {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <ProfileMini title="Monthly profile" rows={monthRows} reduce={!!reduce} testid="monthly-mini" />
-            <ProfileMini title="Weekday profile (Sat→Fri)" rows={weekdayRows} reduce={!!reduce} testid="weekday-mini" />
+            <ProfileMini title="Monthly profile" rows={monthRows} reduce={!!reduce} testid="monthly-mini" tooltipValueLabel="avg units" />
+            <ProfileMini title="Weekday profile (Sat→Fri)" rows={weekdayRows} reduce={!!reduce} testid="weekday-mini" tooltipValueLabel="avg units" />
           </div>
         </div>
       )}
@@ -274,9 +291,10 @@ interface ProfileMiniProps {
   rows: { label: string; value: number }[];
   reduce: boolean;
   testid: string;
+  tooltipValueLabel: string;
 }
 
-function ProfileMini({ title, rows, reduce, testid }: ProfileMiniProps) {
+function ProfileMini({ title, rows, reduce, testid, tooltipValueLabel }: ProfileMiniProps) {
   return (
     <div className="flex flex-col gap-1" data-testid={testid}>
       <span className="text-[11px]" style={{ color: MUTED, fontFamily: "Inter, sans-serif" }}>
@@ -288,6 +306,13 @@ function ProfileMini({ title, rows, reduce, testid }: ProfileMiniProps) {
             <CartesianGrid vertical={false} stroke={GRID} />
             <XAxis dataKey="label" tick={{ fill: MUTED, fontFamily: "Inter, sans-serif", fontSize: 9 }} stroke={GRID} interval={0} />
             <YAxis tick={{ fill: MUTED, fontFamily: "JetBrains Mono, monospace", fontSize: 9 }} stroke={GRID} />
+            <Tooltip
+              cursor={{ fill: "rgba(120,160,255,0.06)" }}
+              contentStyle={tooltipStyle}
+              labelStyle={tooltipLabelStyle}
+              itemStyle={tooltipItemStyle}
+              formatter={(v: number) => [formatNumber(v, 1), tooltipValueLabel]}
+            />
             <Bar dataKey="value" radius={[4, 4, 0, 0]} isAnimationActive={!reduce}>
               {rows.map((r) => (
                 <Cell key={r.label} fill={VIOLET} fillOpacity={0.5} />

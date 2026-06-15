@@ -132,6 +132,15 @@ function EventImpactContent({ result }: { result: ForecastResult }) {
                   color: "#E8EEF9",
                   fontFamily: "JetBrains Mono, monospace",
                 }}
+                labelStyle={{
+                  color: "#E8EEF9",
+                  fontFamily: "Inter, sans-serif",
+                  fontWeight: 600,
+                  marginBottom: 4,
+                }}
+                itemStyle={{
+                  color: MUTED,
+                }}
                 formatter={(v: number) => [signedPct(v), "uplift"]}
               />
               <Bar dataKey="value" radius={[0, 6, 6, 0]} isAnimationActive={!reduce} data-testid="event-bar">
@@ -151,6 +160,19 @@ function EventImpactContent({ result }: { result: ForecastResult }) {
       )}
 
       {/* (b) Horizon timeline strip */}
+      {/*
+       * Layout constants (all in px, must match the container height):
+       *   STRIP_H  = 64  — total track height
+       *   DOT_SIZE = 12  — h-3 w-3
+       *   CENTER   = 32  — vertical midpoint of the strip (STRIP_H / 2)
+       *   DOT_TOP  = CENTER - DOT_SIZE/2 = 26  — positions dot exactly on the center line
+       *   LABEL_ABOVE_TOP = DOT_TOP - 4 - 14 = 8  — label sits 4px above the dot (14px line-height)
+       *   LABEL_BELOW_TOP = DOT_TOP + DOT_SIZE + 4 = 42  — label sits 4px below the dot
+       *
+       * Each event is rendered as three independent absolutely-positioned elements
+       * (label, dot, label) all anchored to the same `left` value so the dot is
+       * always exactly on the center line regardless of label content length.
+       */}
       <div className="mt-1" data-testid="horizon-strip">
         <div
           className="mb-2 flex items-center justify-between text-[11px]"
@@ -161,9 +183,14 @@ function EventImpactContent({ result }: { result: ForecastResult }) {
           <span>{horizon_dates?.[horizon_dates.length - 1] ?? "—"}</span>
         </div>
 
+        {/* Fixed-height track — 64px gives 26px above center + 12px dot + 26px below */}
         <div
-          className="relative h-9 w-full rounded-full"
-          style={{ border: "1px solid var(--border-glass)", background: "rgba(18,26,44,0.4)" }}
+          className="relative w-full overflow-visible rounded-full"
+          style={{
+            height: 64,
+            border: "1px solid var(--border-glass)",
+            background: "rgba(18,26,44,0.4)",
+          }}
         >
           {ticks.length === 0 ? (
             <span
@@ -173,26 +200,51 @@ function EventImpactContent({ result }: { result: ForecastResult }) {
               No events in this 28-day window.
             </span>
           ) : (
-            ticks.map((t) => (
-              <div
-                key={`${t.date}-${t.name}`}
-                className="absolute top-1/2 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center"
-                style={{ left: `${t.pct}%` }}
-                data-testid="horizon-event"
-                title={`${t.name} — ${t.date}`}
-              >
-                <span
-                  className="block h-3 w-3 rounded-full"
-                  style={{ background: CYAN, boxShadow: `0 0 10px ${CYAN}` }}
-                />
-                <span
-                  className="mt-1 whitespace-nowrap text-[10px]"
-                  style={{ color: "#E8EEF9", fontFamily: "Inter, sans-serif" }}
+            ticks.map((t, i) => {
+              const above = i % 2 === 0;
+              // All magic numbers derived from the layout constants above
+              const DOT_TOP   = 26;   // (64/2) - (12/2)
+              const LABEL_H   = 14;   // single-line height at font-size 10px
+              const GAP       = 4;    // px gap between dot edge and label
+              const labelTop  = above
+                ? DOT_TOP - GAP - LABEL_H        // 8
+                : DOT_TOP + 12 + GAP;            // 42
+
+              return (
+                <div
+                  key={`${t.date}-${t.name}`}
+                  data-testid="horizon-event"
                 >
-                  {t.name}
-                </span>
-              </div>
-            ))
+                  {/* Dot — always on the center line */}
+                  <span
+                    className="absolute block h-3 w-3 -translate-x-1/2 rounded-full"
+                    style={{
+                      left: `${t.pct}%`,
+                      top: DOT_TOP,
+                      background: CYAN,
+                      boxShadow: `0 0 10px ${CYAN}`,
+                    }}
+                  />
+                  {/* Label — strictly above or below, same gap every time */}
+                  <span
+                    className="absolute -translate-x-1/2 text-center text-[10px] leading-[14px]"
+                    style={{
+                      left: `${t.pct}%`,
+                      top: labelTop,
+                      width: 80,
+                      color: "#E8EEF9",
+                      fontFamily: "Inter, sans-serif",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                    title={`${t.name} — ${t.date}`}
+                  >
+                    {t.name}
+                  </span>
+                </div>
+              );
+            })
           )}
         </div>
       </div>

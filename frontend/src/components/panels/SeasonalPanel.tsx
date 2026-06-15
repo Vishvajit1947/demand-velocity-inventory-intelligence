@@ -41,6 +41,17 @@ const tooltipStyle: React.CSSProperties = {
   fontFamily: "JetBrains Mono, monospace",
 };
 
+const tooltipLabelStyle: React.CSSProperties = {
+  color: "#E8EEF9",
+  fontFamily: "Inter, sans-serif",
+  fontWeight: 600,
+  marginBottom: 4,
+};
+
+const tooltipItemStyle: React.CSSProperties = {
+  color: "#8A97B2",
+};
+
 export interface SeasonalPanelProps {
   /** Optional until first forecast. */
   result?: ForecastResult;
@@ -120,7 +131,7 @@ function SeasonalContent({ result }: { result: ForecastResult }) {
               tick={{ fill: MUTED, fontFamily: "JetBrains Mono, monospace", fontSize: 10 }}
               stroke={GRID}
             />
-            <Tooltip cursor={{ fill: "rgba(120,160,255,0.06)" }} contentStyle={tooltipStyle} />
+            <Tooltip cursor={{ fill: "rgba(120,160,255,0.06)" }} contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} itemStyle={tooltipItemStyle} />
             <Bar dataKey="value" radius={[6, 6, 0, 0]} isAnimationActive={!reduce}>
               {monthRows.map((r) => {
                 const active = r.idx === month;
@@ -158,7 +169,7 @@ function SeasonalContent({ result }: { result: ForecastResult }) {
                 tick={{ fill: MUTED, fontFamily: "JetBrains Mono, monospace", fontSize: 10 }}
                 stroke={GRID}
               />
-              <Tooltip cursor={{ fill: "rgba(120,160,255,0.06)" }} contentStyle={tooltipStyle} />
+              <Tooltip cursor={{ fill: "rgba(120,160,255,0.06)" }} contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} itemStyle={tooltipItemStyle} />
               <Bar dataKey="value" radius={[5, 5, 0, 0]} isAnimationActive={!reduce}>
                 {weekdayRows.map((r) => (
                   <Cell key={r.label} fill={CYAN} fillOpacity={0.55} data-testid={`weekday-${r.label}`} />
