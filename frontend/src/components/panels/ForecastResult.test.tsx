@@ -125,12 +125,13 @@ describe("ForecastResult (MT-34)", () => {
       />,
     );
 
-    // Multi-mode: legend entries include "(forecast)" suffix
+    // Multi-mode: legend entries include product name + "(forecast)" suffix
+    // In normalized mode the label also includes "(avg Xu)" — match flexibly
     expect(
-      screen.getByText(/Fresh Whole Turkey \(forecast\)/),
+      screen.getByText(/Fresh Whole Turkey.*\(forecast\)/),
     ).toBeInTheDocument();
-    expect(screen.getByText(/Whole Milk \(forecast\)/)).toBeInTheDocument();
-    expect(screen.getByText(/Candy \(forecast\)/)).toBeInTheDocument();
+    expect(screen.getByText(/Whole Milk.*\(forecast\)/)).toBeInTheDocument();
+    expect(screen.getByText(/Candy.*\(forecast\)/)).toBeInTheDocument();
 
     // ProductSwitcher chips appear (product names in the switcher)
     // The switcher renders chip labels matching product_name values
