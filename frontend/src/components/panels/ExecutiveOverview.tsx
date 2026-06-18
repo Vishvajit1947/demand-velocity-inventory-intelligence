@@ -54,21 +54,21 @@ export function ExecutiveOverview({
 }: ExecutiveOverviewProps) {
   // MT-42 skeleton: a row of 4 card-shaped skeleton blocks (06 §5 Loading).
   const skeleton = (
-    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
       {Array.from({ length: 4 }).map((_, i) => (
-        <Skeleton key={i} className="h-[120px] rounded-card" />
+        <Skeleton key={i} className="h-[100px] rounded-card" />
       ))}
     </div>
   );
   // MT-42: wrap in PanelState for all four states (06 §5).
   // hasData = !!summary (summary arrives on first success; kept through errors).
   return (
-    <GlassPanel animate={false}>
+    <GlassPanel animate={false} className="p-4">
       <PanelState
         loading={loading}
         hasData={!!summary}
         skeleton={skeleton}
-        minHeight={140}
+        minHeight={100}
       >
         <SummaryCards summary={summary!} animate={animate} />
       </PanelState>
@@ -86,7 +86,7 @@ function SummaryCards({ summary, animate }: { summary: Summary; animate: boolean
 
   return (
     <motion.div
-      className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4"
+      className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4"
       variants={animate ? staggerContainer : undefined}
       initial={animate ? "hidden" : false}
       animate={animate ? "visible" : undefined}

@@ -57,9 +57,9 @@ export function InventoryRiskPanel({ result, loading = false }: InventoryRiskPan
 
   return (
     <GlassPanel animate={false}>
-      <div className="flex h-full flex-col gap-4" data-testid="inventory-risk-panel">
+      <div className="flex h-full flex-col gap-3" data-testid="inventory-risk-panel">
         <div className="flex items-center justify-between">
-          <div className="flex items-center">
+          <div className="flex items-center gap-2">
             <SectionTitle title="Inventory Risk" className="mb-0" />
             <span
               style={{
@@ -69,7 +69,6 @@ export function InventoryRiskPanel({ result, loading = false }: InventoryRiskPan
                 background: "rgba(255,194,77,0.15)",
                 color: "var(--accent-amber)",
                 border: "1px solid rgba(255,194,77,0.3)",
-                marginLeft: 8,
                 fontFamily: "Inter, sans-serif",
                 fontWeight: 600,
                 letterSpacing: "0.04em",
@@ -122,158 +121,166 @@ function InventoryRiskContent({ result }: { result: ForecastResult }) {
   const showStockoutMarker = inv.cover_days <= 28;
 
   return (
-    <>
-      {/* (a) Risk badge + optional overstock pill */}
-      <div className="flex items-center gap-2">
-        <StatusBadge kind="risk" status={inv.stockout_risk} />
-        {inv.overstock && (
-          <span
-            className="rounded-chip px-3 py-1 text-[12px] font-medium"
-            style={{
-              color: VIOLET,
-              border: `1px solid ${VIOLET}`,
-              background: "rgba(139, 92, 255, 0.12)",
-              fontFamily: "Inter, sans-serif",
-            }}
-            data-testid="overstock-pill"
-          >
-            Overstock
-          </span>
-        )}
-      </div>
+    /* Side-by-side layout: chart left (flex-1), reorder card right (fixed width) */
+    <div className="flex flex-col gap-4 xl:flex-row xl:gap-6">
 
-      {/* (b) Projected-stock line chart */}
-      <div style={{ width: "100%", height: 180 }} data-testid="projected-stock-chart">
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={rows} margin={{ top: 28, right: 12, bottom: 0, left: -12 }}>
-            <CartesianGrid stroke={GRID} />
-            <XAxis
-              dataKey="day"
-              tick={{ fill: MUTED, fontFamily: "JetBrains Mono, monospace", fontSize: 10 }}
-              stroke={GRID}
-              tickFormatter={(d: number) => `D${d}`}
-            />
-            <YAxis
-              tick={{ fill: MUTED, fontFamily: "JetBrains Mono, monospace", fontSize: 10 }}
-              stroke={GRID}
-            />
-            <Tooltip
-              cursor={{ stroke: "rgba(120, 160, 255, 0.3)" }}
-              contentStyle={{
-                background: "#0E1626",
-                border: "1px solid rgba(120, 160, 255, 0.12)",
-                borderRadius: 10,
-                color: "#E8EEF9",
-                fontFamily: "JetBrains Mono, monospace",
+      {/* (a) Risk badge + projected-stock chart — left column */}
+      <div className="flex flex-col gap-3 flex-1 min-w-0">
+        {/* Risk badge + optional overstock pill */}
+        <div className="flex items-center gap-2">
+          <StatusBadge kind="risk" status={inv.stockout_risk} />
+          {inv.overstock && (
+            <span
+              className="rounded-chip px-3 py-1 text-[12px] font-medium"
+              style={{
+                color: VIOLET,
+                border: `1px solid ${VIOLET}`,
+                background: "rgba(139, 92, 255, 0.12)",
+                fontFamily: "Inter, sans-serif",
               }}
-              labelFormatter={(d: number) => `Day ${d}`}
-              formatter={(v: number) => [formatNumber(v, 1), "projected stock"]}
-            />
-            {/* Safety stock dashed threshold — amber, clearly visible */}
-            <ReferenceLine
-              y={inv.safety_stock}
-              stroke={AMBER}
-              strokeOpacity={0.7}
-              strokeDasharray="6 4"
-              strokeWidth={1.5}
-              label={{
-                value: "Safety stock",
-                position: "insideTopRight",
-                fill: AMBER,
-                fontSize: 11,
-                fontFamily: "JetBrains Mono, monospace",
-                opacity: 0.9,
-              }}
-              data-testid="safety-ref"
-            />
-            {/* Stockout annotation as ReferenceDot at (cover_days, 0) */}
-            {showStockoutMarker && (
-              <ReferenceDot
-                x={inv.cover_days}
-                y={0}
-                r={5}
-                fill={ROSE}
-                stroke="none"
-                label={{
-                  value: `Day ${inv.cover_days} — stockout`,
-                  position: "insideTopLeft",
-                  fill: ROSE,
-                  fontSize: 11,
-                  fontWeight: 600,
+              data-testid="overstock-pill"
+            >
+              Overstock
+            </span>
+          )}
+        </div>
+
+        {/* Projected-stock line chart */}
+        <div style={{ width: "100%", height: 200 }} data-testid="projected-stock-chart">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={rows} margin={{ top: 28, right: 12, bottom: 0, left: -12 }}>
+              <CartesianGrid stroke={GRID} />
+              <XAxis
+                dataKey="day"
+                tick={{ fill: MUTED, fontFamily: "JetBrains Mono, monospace", fontSize: 10 }}
+                stroke={GRID}
+                tickFormatter={(d: number) => `D${d}`}
+              />
+              <YAxis
+                tick={{ fill: MUTED, fontFamily: "JetBrains Mono, monospace", fontSize: 10 }}
+                stroke={GRID}
+              />
+              <Tooltip
+                cursor={{ stroke: "rgba(120, 160, 255, 0.3)" }}
+                contentStyle={{
+                  background: "#0E1626",
+                  border: "1px solid rgba(120, 160, 255, 0.12)",
+                  borderRadius: 10,
+                  color: "#E8EEF9",
                   fontFamily: "JetBrains Mono, monospace",
                 }}
-                data-testid="stockout-ref"
+                labelFormatter={(d: number) => `Day ${d}`}
+                formatter={(v: number) => [formatNumber(v, 1), "projected stock"]}
               />
-            )}
-            {/* Safe segment — cyan */}
-            <Line
-              type="monotone"
-              dataKey="safe"
-              stroke={CYAN}
-              strokeWidth={2.5}
-              dot={false}
-              connectNulls={false}
-              isAnimationActive={!reduce}
-              style={{ filter: `drop-shadow(0 0 6px ${CYAN})` }}
-              data-testid="stock-line-safe"
-            />
-            {/* Danger segment — rose dashed */}
-            <Line
-              type="monotone"
-              dataKey="danger"
-              stroke={ROSE}
-              strokeWidth={2.5}
-              strokeDasharray="4 3"
-              dot={false}
-              connectNulls={false}
-              isAnimationActive={!reduce}
-              style={{ filter: `drop-shadow(0 0 6px ${ROSE})` }}
-              data-testid="stock-line-danger"
-            />
-          </LineChart>
-        </ResponsiveContainer>
+              {/* Safety stock dashed threshold — amber, clearly visible */}
+              <ReferenceLine
+                y={inv.safety_stock}
+                stroke={AMBER}
+                strokeOpacity={0.7}
+                strokeDasharray="6 4"
+                strokeWidth={1.5}
+                label={{
+                  value: "Safety stock",
+                  position: "insideTopRight",
+                  fill: AMBER,
+                  fontSize: 11,
+                  fontFamily: "JetBrains Mono, monospace",
+                  opacity: 0.9,
+                }}
+                data-testid="safety-ref"
+              />
+              {/* Stockout annotation as ReferenceDot at (cover_days, 0) */}
+              {showStockoutMarker && (
+                <ReferenceDot
+                  x={inv.cover_days}
+                  y={0}
+                  r={5}
+                  fill={ROSE}
+                  stroke="none"
+                  label={{
+                    value: `Day ${inv.cover_days} — stockout`,
+                    position: "insideTopLeft",
+                    fill: ROSE,
+                    fontSize: 11,
+                    fontWeight: 600,
+                    fontFamily: "JetBrains Mono, monospace",
+                  }}
+                  data-testid="stockout-ref"
+                />
+              )}
+              {/* Safe segment — cyan */}
+              <Line
+                type="monotone"
+                dataKey="safe"
+                stroke={CYAN}
+                strokeWidth={2.5}
+                dot={false}
+                connectNulls={false}
+                isAnimationActive={!reduce}
+                style={{ filter: `drop-shadow(0 0 6px ${CYAN})` }}
+                data-testid="stock-line-safe"
+              />
+              {/* Danger segment — rose dashed */}
+              <Line
+                type="monotone"
+                dataKey="danger"
+                stroke={ROSE}
+                strokeWidth={2.5}
+                strokeDasharray="4 3"
+                dot={false}
+                connectNulls={false}
+                isAnimationActive={!reduce}
+                style={{ filter: `drop-shadow(0 0 6px ${ROSE})` }}
+                data-testid="stock-line-danger"
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
       </div>
 
-      {/* (c) Reorder card */}
+      {/* (b) Reorder card — right column */}
       <div
-        className="rounded-[14px] p-4"
+        className="rounded-[14px] p-5 flex flex-col justify-center shrink-0 xl:w-[280px]"
         style={{ border: "1px solid var(--border-glass)", background: "rgba(18, 26, 44, 0.4)" }}
         data-testid="reorder-card"
       >
-        <div className="flex flex-col">
-          <span className="text-[12px]" style={{ color: MUTED, fontFamily: "Inter, sans-serif" }}>
-            Recommended order qty
-          </span>
-          <span
-            className="leading-none"
-            style={{
-              color: "#E8EEF9",
-              fontFamily: "JetBrains Mono, monospace",
-              fontVariantNumeric: "tabular-nums",
-              fontSize: 36,
-              fontWeight: 600,
-            }}
-            data-testid="reorder-qty"
-          >
-            {reduce ? (
-              formatNumber(inv.recommended_order_qty, 0)
-            ) : (
-              <CountUp end={inv.recommended_order_qty} duration={0.8} separator="," />
-            )}
-          </span>
-        </div>
+        <span
+          className="text-[11px] mb-1"
+          style={{ color: MUTED, fontFamily: "Inter, sans-serif" }}
+        >
+          Recommended order qty
+        </span>
+        <span
+          className="leading-none mb-4"
+          style={{
+            color: "var(--accent-lime)",
+            fontFamily: "JetBrains Mono, monospace",
+            fontVariantNumeric: "tabular-nums",
+            fontSize: 48,
+            fontWeight: 700,
+            textShadow: "0 0 24px rgba(77,255,176,0.35)",
+          }}
+          data-testid="reorder-qty"
+        >
+          {reduce ? (
+            formatNumber(inv.recommended_order_qty, 0)
+          ) : (
+            <CountUp end={inv.recommended_order_qty} duration={0.8} separator="," />
+          )}{" "}
+          <span style={{ fontSize: 22, fontWeight: 400, color: "var(--text-muted)" }}>units</span>
+        </span>
 
-        <div className="mt-3 grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 gap-3">
           <Figure label="On hand"       value={formatNumber(inv.on_hand, 0)} />
-          <Figure label="Reorder point" value={formatNumber(inv.reorder_point, 1)} />
-          <Figure label="28-day demand" value={formatNumber(inv.horizon_demand, 1)} />
+          <Figure label="Reorder pt"    value={formatNumber(inv.reorder_point, 1)} />
+          <Figure label="28d demand"    value={formatNumber(inv.horizon_demand, 1)} />
         </div>
 
-        <p className="mt-3 text-[11px]" style={{ color: MUTED, fontFamily: "Inter, sans-serif" }}>
+        <p className="mt-4 text-[10px]" style={{ color: MUTED, fontFamily: "Inter, sans-serif" }}>
           Simulated reorder model — illustrative.
         </p>
       </div>
-    </>
+    </div>
   );
 }
 

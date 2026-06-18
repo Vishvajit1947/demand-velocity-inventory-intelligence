@@ -94,7 +94,7 @@ export function VelocityPanel({ result, loading = false }: VelocityPanelProps) {
         loading={loading}
         hasData={!!result}
         skeleton={skeleton}
-        minHeight={300}
+        minHeight={280}
       >
         {result && <VelocityContent result={result} reduce={!!reduce} />}
       </PanelState>
@@ -167,9 +167,10 @@ function VelocityContent({ result, reduce }: { result: ForecastResult; reduce: b
     () => ({
       paper_bgcolor: "rgba(0,0,0,0)",
       plot_bgcolor:  "rgba(0,0,0,0)",
-      margin: { t: 8, b: 0, l: 24, r: 24 },
+      // Reduce top/side margins so the arc fills the 220px container well.
+      // Bottom margin 0 — the value row below the gauge provides the visual gap.
+      margin: { t: 4, b: 0, l: 20, r: 20 },
       font: { color: "#E8EEF9", family: "Inter, sans-serif" },
-      // No fixed height — let the container drive the size via autosize
       autosize: true,
       // Plotly indicator transition (disabled under reduced-motion).
       // @ts-expect-error — transition is a valid Plotly layout key for indicator
@@ -183,7 +184,7 @@ function VelocityContent({ result, reduce }: { result: ForecastResult; reduce: b
       initial={reduce ? false : { opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-      className="flex h-full flex-col gap-3"
+      className="flex h-full flex-col gap-2"
       data-testid="velocity-panel"
     >
       {/* Header — title + status badge */}
@@ -192,8 +193,8 @@ function VelocityContent({ result, reduce }: { result: ForecastResult; reduce: b
         <StatusBadge kind="velocity" status={status} />
       </div>
 
-      {/* Gauge area — fills remaining flex space */}
-      <div className="relative min-h-0 flex-1" aria-hidden="false">
+      {/* Gauge area — fixed height so it never shifts between products */}
+      <div className="relative w-full" style={{ height: 220 }} aria-hidden="false">
         <Plot
           data={data as Data[]}
           layout={layout}
@@ -206,25 +207,27 @@ function VelocityContent({ result, reduce }: { result: ForecastResult; reduce: b
           useResizeHandler
           data-testid="velocity-gauge"
         />
+      </div>
 
-        {/*
-         * Real (un-clamped) value overlay — 06 §4 P3.
-         * Tests assert on this element's text content.
-         */}
-        <div
-          className="pointer-events-none absolute inset-x-0 bottom-[18%] text-center"
-          data-testid="velocity-value"
-          style={{
-            fontFamily: "JetBrains Mono, monospace",
-            fontVariantNumeric: "tabular-nums",
-            color: activeColor,
-            fontSize: 28,
-            fontWeight: 600,
-            textShadow: `0 0 18px ${withAlpha(activeColor, 0.45)}`,
-          }}
-        >
-          {signedPct(value)}
-        </div>
+      {/*
+       * Real (un-clamped) value — pulled OUT of the gauge container so it never
+       * overlaps the title. Sits as a stable row between gauge and caption.
+       * 06 §4 P3 — tests assert on this element's text content.
+       */}
+      <div
+        className="text-center"
+        data-testid="velocity-value"
+        style={{
+          fontFamily: "JetBrains Mono, monospace",
+          fontVariantNumeric: "tabular-nums",
+          color: activeColor,
+          fontSize: 30,
+          fontWeight: 600,
+          lineHeight: 1,
+          textShadow: `0 0 18px ${withAlpha(activeColor, 0.45)}`,
+        }}
+      >
+        {signedPct(value)}
       </div>
 
       {/* Caption — "{signed}% vs prior 28 days" (06 §4 P3) */}

@@ -70,13 +70,13 @@ export function SeasonalPanel({ result, loading = false }: SeasonalPanelProps) {
 
   return (
     <GlassPanel animate={false}>
-      <div className="flex h-full flex-col gap-4" data-testid="seasonal-panel">
+      <div className="flex h-full flex-col gap-3" data-testid="seasonal-panel">
         <SectionTitle title="Seasonal Trend" />
         <PanelState
           loading={loading}
           hasData={!!result}
           skeleton={skeleton}
-          minHeight={260}
+          minHeight={280}
         >
           {result && <SeasonalContent result={result} />}
         </PanelState>

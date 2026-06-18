@@ -47,15 +47,25 @@ export function StatCard({
   const deltaStyle = delta !== undefined ? signAccent(delta) : undefined;
 
   return (
-    <motion.div variants={entranceVariants} className={cn("glass-panel p-5", className)}>
+    <motion.div variants={entranceVariants} className={cn("glass-panel p-4", className)}>
       {/* Header row: title + optional icon */}
-      <div className="flex items-center justify-between">
-        <span className="text-caption uppercase tracking-wide text-text-muted">{title}</span>
-        {icon && <span className="text-text-muted">{icon}</span>}
+      <div className="flex items-center justify-between mb-1">
+        <span
+          style={{
+            fontSize: 10,
+            fontFamily: "JetBrains Mono, monospace",
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            color: "var(--text-muted)",
+          }}
+        >
+          {title}
+        </span>
+        {icon && <span style={{ color: "var(--text-muted)", opacity: 0.6 }}>{icon}</span>}
       </div>
 
       {/* Main KPI number */}
-      <div className={cn("mt-2 tabular text-display font-semibold", valueColor)}>
+      <div className={cn("tabular font-semibold leading-none", valueColor)} style={{ fontSize: 34 }}>
         {prefix}
         {reduce ? (
           value.toFixed(decimals)
@@ -74,7 +84,11 @@ export function StatCard({
       )}
 
       {/* Footnote / secondary info */}
-      {footnote && <div className="mt-2 text-caption text-text-muted">{footnote}</div>}
+      {footnote && (
+        <div className="mt-2 text-caption text-text-muted" style={{ fontSize: 11 }}>
+          {footnote}
+        </div>
+      )}
     </motion.div>
   );
 }

@@ -97,7 +97,7 @@ export default function App() {
         </div>
 
         {/* ── Main content area ──────────────────────────────────────────── */}
-        <main className="mx-auto max-w-screen-2xl px-6 py-8">
+        <main className="mx-auto max-w-screen-2xl px-4 py-5 lg:px-6 lg:py-6">
           {/*
            * MT-42: EntranceList wraps the panel grid so the staggered entrance
            * (fade + 12px rise, stagger 0.06s, 06 §2) fires once on Success.
@@ -107,20 +107,20 @@ export default function App() {
            * MT-43 §5.1 — Responsive grid (06 §3):
            * Mobile-first base = 1 column (below 1280px).
            * At ≥1280px (xl) → full 12-column grid with xl:col-span-* per panel.
-           * Gap stays 24px (gap-6, 06 §2). Nothing overflows below 1280px.
+           * Gap is 16px (gap-4) for tighter dashboard density matching the reference.
            */}
-          <EntranceList className="grid grid-cols-1 gap-6 xl:grid-cols-12">
+          <EntranceList className="grid grid-cols-1 gap-4 xl:grid-cols-12">
 
             {/* P1 — Executive Overview (full 12 cols at xl) */}
-            <EntranceItem className="min-h-[140px] xl:col-span-12">
+            <EntranceItem className="xl:col-span-12">
               <ExecutiveOverview
                 summary={forecastData?.summary}
                 loading={isPending}
               />
             </EntranceItem>
 
-            {/* P2 — Forecast Result (8 cols at xl) */}
-            <EntranceItem className="min-h-[360px] xl:col-span-8">
+            {/* P2 — Forecast Result (8 cols at xl) + P3 — Velocity (4 cols at xl) */}
+            <EntranceItem className="min-h-[380px] xl:col-span-8">
               <ForecastResult
                 results={forecastData?.results ?? []}
                 activeSeriesId={activeSeriesId}
@@ -130,33 +130,31 @@ export default function App() {
               />
             </EntranceItem>
 
-            {/* P3 — Velocity (4 cols at xl) */}
-            <EntranceItem className="min-h-[300px] xl:col-span-4">
+            <EntranceItem className="min-h-[320px] xl:col-span-4">
               <VelocityPanel result={selectedResult} loading={isPending} />
             </EntranceItem>
 
-            {/* P4 — Inventory Risk (8 cols at xl) — PRIMARY OBJECTIVE */}
-            <EntranceItem className="min-h-[300px] xl:col-span-8">
+            {/* P4 — Inventory Risk (full 12 cols at xl) — PRIMARY OBJECTIVE */}
+            <EntranceItem className="min-h-[320px] xl:col-span-12">
               <InventoryRiskPanel result={selectedResult} loading={isPending} />
             </EntranceItem>
 
-            {/* P5 — Explainability (4 cols at xl) */}
-            <EntranceItem className="min-h-[300px] xl:col-span-4">
+            {/* P5 — Explainability (full 12 cols at xl) */}
+            <EntranceItem className="min-h-[240px] xl:col-span-12">
               <ExplainabilityPanel result={selectedResult} loading={isPending} />
             </EntranceItem>
 
-            {/* P6 — Event Impact (6 cols at xl) */}
-            <EntranceItem className="min-h-[260px] xl:col-span-6">
+            {/* P6 — Event Impact (6 cols at xl) + P7 — Seasonal Trend (6 cols at xl) */}
+            <EntranceItem className="min-h-[320px] xl:col-span-6">
               <EventImpactPanel result={selectedResult} loading={isPending} />
             </EntranceItem>
 
-            {/* P7 — Seasonal Trend (6 cols at xl) */}
-            <EntranceItem className="min-h-[260px] xl:col-span-6">
+            <EntranceItem className="min-h-[320px] xl:col-span-6">
               <SeasonalPanel result={selectedResult} loading={isPending} />
             </EntranceItem>
 
-            {/* P8 — Forecast Quality / Accuracy & Coherence (4 cols at xl) */}
-            <EntranceItem className="min-h-[260px] xl:col-span-4">
+            {/* P8 — Forecast Quality / Accuracy & Coherence (full 12 cols at xl) */}
+            <EntranceItem className="min-h-[220px] xl:col-span-12">
               <AccuracyCoherence
                 metrics={selectedResult?.metrics}
                 loading={isPending}

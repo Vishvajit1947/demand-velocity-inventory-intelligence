@@ -90,20 +90,20 @@ export function ExplainabilityPanel({ result, loading = false }: ExplainabilityP
   const skeleton = (
     <div className="flex flex-col gap-3">
       {Array.from({ length: 3 }).map((_, i) => (
-        <Skeleton key={i} className="h-16 w-full rounded-card" />
+        <Skeleton key={i} className="h-14 w-full rounded-card" />
       ))}
     </div>
   );
 
   return (
     <GlassPanel animate={false}>
-      <div className="flex h-full flex-col gap-4" data-testid="explainability-panel">
+      <div className="flex h-full flex-col gap-3" data-testid="explainability-panel">
         <SectionTitle title="Explainability" />
         <PanelState
           loading={loading}
           hasData={!!result}
           skeleton={skeleton}
-          minHeight={300}
+          minHeight={180}
         >
           {result && <ExplainabilityContent result={result} />}
         </PanelState>
@@ -141,25 +141,29 @@ function ExplainabilityContent({ result }: { result: ForecastResult }) {
 
   return (
     <>
-      {/* Tab toggle */}
-      <div
-        className="flex gap-1 rounded-full p-1 self-end"
-        style={{ border: "1px solid var(--border-glass)" }}
-        role="tablist"
-        aria-label="Explainability views"
-      >
-        <TabChip active={tab === "insights"} onClick={() => setTab("insights")} id="tab-insights" aria-controls="panel-insights">
-          Insights
-        </TabChip>
-        <TabChip active={tab === "deep"} onClick={() => setTab("deep")} id="tab-deep" aria-controls="panel-deep">
-          Deep Dive
-        </TabChip>
+      {/* Tab toggle — aligned to right */}
+      <div className="flex items-center justify-end">
+        <div
+          className="flex gap-1 rounded-full p-1"
+          style={{ border: "1px solid var(--border-glass)" }}
+          role="tablist"
+          aria-label="Explainability views"
+        >
+          <TabChip active={tab === "insights"} onClick={() => setTab("insights")} id="tab-insights" aria-controls="panel-insights">
+            Insights
+          </TabChip>
+          <TabChip active={tab === "deep"} onClick={() => setTab("deep")} id="tab-deep" aria-controls="panel-deep">
+            Deep Dive
+          </TabChip>
+        </div>
       </div>
 
-      {/* Insights tab */}
+      {/* Insights tab — horizontal: narrative left, factor bars right */}
       {tab === "insights" && (
-        <div id="panel-insights" role="tabpanel" aria-labelledby="tab-insights" className="flex flex-col gap-4" data-testid="insights-tab">
-          <div className="flex flex-col gap-2">
+        <div id="panel-insights" role="tabpanel" aria-labelledby="tab-insights" className="flex flex-col xl:flex-row gap-4 xl:gap-6" data-testid="insights-tab">
+
+          {/* Narrative bullets — takes more space */}
+          <div className="flex flex-col gap-2 flex-1">
             {narrative.map((text, i) => {
               const kind = factors[i]?.kind as FactorKind | undefined;
               const Icon  = kind ? KIND_ICON[kind] : Sparkles;
@@ -170,16 +174,15 @@ function ExplainabilityContent({ result }: { result: ForecastResult }) {
                   initial={reduce ? false : { opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.4, delay: reduce ? 0 : i * 0.06, ease: [0.22, 1, 0.36, 1] }}
-                  className="flex items-start gap-3 rounded-[14px] p-3"
+                  className="flex items-start gap-3 rounded-[12px] px-4 py-2.5"
                   style={{
-                    border: "1px solid var(--border-glass)",
-                    background: "rgba(18, 26, 44, 0.4)",
-                    boxShadow: `0 0 18px ${color}2E`,
+                    borderLeft: `3px solid ${color}`,
+                    background: "rgba(18, 26, 44, 0.45)",
                   }}
                   data-testid="narrative-card"
                 >
-                  <Icon size={18} color={color} style={{ marginTop: 2, flexShrink: 0 }} aria-hidden />
-                  <p className="text-[13px]" style={{ color: "#E8EEF9", fontFamily: "Inter, sans-serif" }}>
+                  <Icon size={16} color={color} style={{ marginTop: 2, flexShrink: 0 }} aria-hidden />
+                  <p className="text-[13px] leading-snug" style={{ color: "#E8EEF9", fontFamily: "Inter, sans-serif" }}>
                     {text}
                   </p>
                 </motion.div>
@@ -187,20 +190,24 @@ function ExplainabilityContent({ result }: { result: ForecastResult }) {
             })}
           </div>
 
-          <div className="flex flex-col gap-2" data-testid="factor-bars">
+          {/* Factor bars — right column */}
+          <div className="flex flex-col gap-2 xl:w-[300px] shrink-0" data-testid="factor-bars">
             {factors.map((f) => {
               const color    = KIND_COLOR[f.kind] ?? VIOLET;
               const widthPct = (Math.abs(f.value) / maxAbs) * 100;
               return (
                 <div key={f.label} className="flex flex-col gap-1" data-testid="factor-bar">
                   <div className="flex items-center justify-between text-[12px]">
-                    <span style={{ color: "#E8EEF9", fontFamily: "Inter, sans-serif" }}>{f.label}</span>
+                    <span style={{ color: MUTED, fontFamily: "Inter, sans-serif" }}>{f.label}</span>
                     <span style={{ color, fontFamily: "JetBrains Mono, monospace", fontVariantNumeric: "tabular-nums" }}>
                       {signedPct(f.value)}
                     </span>
                   </div>
-                  <div className="h-2 w-full overflow-hidden rounded-full" style={{ background: "rgba(120, 160, 255, 0.10)" }}>
-                    <div className="h-full rounded-full" style={{ width: `${widthPct}%`, background: color, boxShadow: `0 0 8px ${color}` }} />
+                  <div className="h-1.5 w-full overflow-hidden rounded-full" style={{ background: "rgba(120, 160, 255, 0.10)" }}>
+                    <div
+                      className="h-full rounded-full"
+                      style={{ width: `${widthPct}%`, background: color, boxShadow: `0 0 6px ${color}66` }}
+                    />
                   </div>
                 </div>
               );

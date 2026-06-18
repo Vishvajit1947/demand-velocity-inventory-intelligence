@@ -84,8 +84,11 @@ export function DateField({ value, bounds, loading, onChange }: DateFieldProps) 
 
   return (
     <div ref={containerRef} className="relative flex flex-col gap-1">
-      <label className="text-caption text-text-muted font-sans">
-        Forecast start date
+      <label
+        className="font-mono uppercase tracking-widest"
+        style={{ fontSize: 10, color: "var(--text-muted)", letterSpacing: "0.08em" }}
+      >
+        Forecast Start Date
       </label>
 
       {/* Trigger button */}

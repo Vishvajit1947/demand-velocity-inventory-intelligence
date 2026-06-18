@@ -64,24 +64,39 @@ export function ForecastControlBar({
        */}
       <GlassPanel
         animate={false}
-        className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between"
+        className="flex flex-row items-center justify-between gap-4 py-3 px-5"
       >
-        {/* LEFT — Date picker */}
-        <DateField
-          value={selectedDate}
-          bounds={bounds}
-          loading={boundsLoading}
-          onChange={onDateChange}
-        />
+        {/* LEFT — Date + Product stacked info */}
+        <div className="flex items-center gap-8 min-w-0">
+          {/* Date picker — label is rendered inside DateField */}
+          <div className="shrink-0">
+            <DateField
+              value={selectedDate}
+              bounds={bounds}
+              loading={boundsLoading}
+              onChange={onDateChange}
+            />
+          </div>
 
-        {/* CENTRE — Product chips */}
-        <div className="flex-1 lg:px-6">
-          <ProductMultiSelect
-            products={products}
-            loading={productsLoading}
-            selectedIds={selectedIds}
-            onChange={onProductsChange}
+          {/* Divider */}
+          <div
+            style={{
+              width: 1,
+              height: 36,
+              background: "var(--border-glass)",
+              flexShrink: 0,
+            }}
           />
+
+          {/* Product select — label is rendered inside ProductMultiSelect */}
+          <div className="flex-1 min-w-0">
+            <ProductMultiSelect
+              products={products}
+              loading={productsLoading}
+              selectedIds={selectedIds}
+              onChange={onProductsChange}
+            />
+          </div>
         </div>
 
         {/* RIGHT — Forecast CTA */}
@@ -90,7 +105,7 @@ export function ForecastControlBar({
           disabled={!canForecast}
           onClick={handleForecast}
           aria-label="Run forecast"
-          className="min-w-[180px] justify-center"
+          className="shrink-0 min-w-[140px] justify-center"
         >
           {isPending ? (
             <>

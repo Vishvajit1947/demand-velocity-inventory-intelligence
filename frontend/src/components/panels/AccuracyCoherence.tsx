@@ -104,7 +104,7 @@ export function AccuracyCoherence({ metrics, loading = false, archetype }: Accur
         loading={loading}
         hasData={!!metrics}
         skeleton={skeleton}
-        minHeight={220}
+        minHeight={160}
       >
         {metrics && acc && coh && (
           <>
@@ -129,7 +129,7 @@ export function AccuracyCoherence({ metrics, loading = false, archetype }: Accur
                       fontSize: 11,
                       color: "var(--text-muted)",
                       textAlign: "center",
-                      marginTop: 4,
+                      marginTop: 2,
                       display: "block",
                     }}
                   >
@@ -158,7 +158,7 @@ export function AccuracyCoherence({ metrics, loading = false, archetype }: Accur
                       fontSize: 11,
                       color: "var(--text-muted)",
                       textAlign: "center",
-                      marginTop: 4,
+                      marginTop: 2,
                       display: "block",
                     }}
                   >
@@ -168,7 +168,7 @@ export function AccuracyCoherence({ metrics, loading = false, archetype }: Accur
               </div>
             </div>
 
-            {/* sMAPE / MAE / RMSE caption — uses toFixed(1) for all values */}
+            {/* sMAPE / MAE / RMSE caption */}
             <p
               className="text-center text-text-muted font-mono tabular-nums"
               style={{ fontSize: 11, color: "var(--text-muted)" }}

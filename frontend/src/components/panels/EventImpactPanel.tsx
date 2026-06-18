@@ -55,20 +55,16 @@ export function EventImpactPanel({ result, loading = false }: EventImpactPanelPr
 
   return (
     <GlassPanel animate={false}>
-      <div className="flex h-full flex-col gap-4" data-testid="event-impact-panel">
+      <div className="flex h-full flex-col gap-3" data-testid="event-impact-panel">
         <SectionTitle title="Event Impact" />
-        {/* max-height keeps the panel ≈ SeasonalTrendPanel height; overflow:hidden
-           enforces it even if the bar chart somehow exceeds the top-5 budget. */}
-      <div style={{ maxHeight: 480, overflow: "hidden" }}>
         <PanelState
           loading={loading}
           hasData={!!result}
           skeleton={skeleton}
-          minHeight={260}
+          minHeight={280}
         >
           {result && <EventImpactContent result={result} />}
         </PanelState>
-      </div>
       </div>
     </GlassPanel>
   );
@@ -91,7 +87,7 @@ function EventImpactContent({ result }: { result: ForecastResult }) {
     [event_uplift],
   );
 
-  const shownCount = rows.length; // Math.min(5, totalEvents)
+  const shownCount = rows.length;
 
   const lastIdx = Math.max(1, (horizon_dates?.length ?? 1) - 1);
 
@@ -107,7 +103,7 @@ function EventImpactContent({ result }: { result: ForecastResult }) {
   );
 
   // Height based on top-5 count only — keeps panel compact.
-  const chartHeight = Math.max(140, shownCount * 38);
+  const chartHeight = Math.max(140, shownCount * 42);
 
   return (
     <>
@@ -121,9 +117,8 @@ function EventImpactContent({ result }: { result: ForecastResult }) {
        *   LABEL_ABOVE_TOP = DOT_TOP - 4 - 14 = 8  — label sits 4px above the dot (14px line-height)
        *   LABEL_BELOW_TOP = DOT_TOP + DOT_SIZE + 4 = 42  — label sits 4px below the dot
        *
-       * Each event is rendered as three independent absolutely-positioned elements
-       * (label, dot, label) all anchored to the same `left` value so the dot is
-       * always exactly on the center line regardless of label content length.
+       * Each event is rendered as two absolutely-positioned elements
+       * (dot + label) anchored to the same `left` value.
        */}
       <div className="mt-1" data-testid="horizon-strip">
         <div
@@ -154,19 +149,15 @@ function EventImpactContent({ result }: { result: ForecastResult }) {
           ) : (
             ticks.map((t, i) => {
               const above = i % 2 === 0;
-              // All magic numbers derived from the layout constants above
-              const DOT_TOP  = 26;  // (64/2) - (12/2)
-              const LABEL_H  = 14;  // single-line height at font-size 10px
-              const GAP      = 4;   // px gap between dot edge and label
+              const DOT_TOP  = 26;
+              const LABEL_H  = 14;
+              const GAP      = 4;
               const labelTop = above
                 ? DOT_TOP - GAP - LABEL_H   // 8
                 : DOT_TOP + 12 + GAP;       // 42
 
               return (
-                <div
-                  key={`${t.date}-${t.name}`}
-                  data-testid="horizon-event"
-                >
+                <div key={`${t.date}-${t.name}`} data-testid="horizon-event">
                   {/* Dot — always on the center line */}
                   <span
                     className="absolute block h-3 w-3 -translate-x-1/2 rounded-full"
@@ -177,7 +168,7 @@ function EventImpactContent({ result }: { result: ForecastResult }) {
                       boxShadow: `0 0 10px ${CYAN}`,
                     }}
                   />
-                  {/* Label — strictly above or below, same gap every time */}
+                  {/* Label — strictly above or below */}
                   <span
                     className="absolute -translate-x-1/2 text-center text-[10px] leading-[14px]"
                     style={{
@@ -201,17 +192,25 @@ function EventImpactContent({ result }: { result: ForecastResult }) {
         </div>
       </div>
 
-      {/* Separator between horizon strip and bar chart */}
-      <hr style={{ border: "none", borderTop: `1px solid ${GRID}`, margin: "4px 0" }} />
+      {/* Separator */}
+      <hr style={{ border: "none", borderTop: `1px solid ${GRID}`, margin: "2px 0" }} />
 
-      {/* (b) Top-5 historical impact bar chart */}
-      <p
-        className="text-[11px]"
-        style={{ color: MUTED, fontFamily: "JetBrains Mono, monospace", marginBottom: 4 }}
-      >
-        top 5 historical impact
-      </p>
+      {/* (b) Top-5 header row */}
+      <div className="flex items-center justify-between">
+        <p
+          className="text-[11px]"
+          style={{ color: MUTED, fontFamily: "JetBrains Mono, monospace" }}
+        >
+          top 5 historical impact
+        </p>
+        {totalEvents > shownCount && (
+          <span style={{ fontSize: 10, color: MUTED, fontFamily: "Inter, sans-serif" }}>
+            Showing {shownCount} of {totalEvents} events
+          </span>
+        )}
+      </div>
 
+      {/* (b) Bar chart */}
       {rows.length === 0 ? (
         <p className="text-[13px]" style={{ color: MUTED, fontFamily: "Inter, sans-serif" }}>
           No event uplift profile for this product.
@@ -230,7 +229,7 @@ function EventImpactContent({ result }: { result: ForecastResult }) {
               <YAxis
                 type="category"
                 dataKey="name"
-                width={120}
+                width={110}
                 tick={{ fill: "#E8EEF9", fontFamily: "Inter, sans-serif", fontSize: 12 }}
                 stroke={GRID}
               />
@@ -249,9 +248,7 @@ function EventImpactContent({ result }: { result: ForecastResult }) {
                   fontWeight: 600,
                   marginBottom: 4,
                 }}
-                itemStyle={{
-                  color: MUTED,
-                }}
+                itemStyle={{ color: MUTED }}
                 formatter={(v: number) => [signedPct(v), "uplift"]}
               />
               <Bar dataKey="value" radius={[0, 6, 6, 0]} isAnimationActive={!reduce} data-testid="event-bar">
@@ -270,18 +267,18 @@ function EventImpactContent({ result }: { result: ForecastResult }) {
         </div>
       )}
 
-      {/* (c) Muted caption — "Showing n of total events — full list in Deep Dive" */}
+      {/* (c) Muted caption */}
       {totalEvents > 0 && (
         <p
           style={{
             fontSize: 11,
             color: "var(--text-muted)",
             fontFamily: "Inter, sans-serif",
-            margin: "4px 0 0",
+            marginTop: 2,
           }}
           data-testid="event-impact-caption"
         >
-          Showing {shownCount} of {totalEvents} events — full list in Deep Dive
+          Showing top {shownCount} of {totalEvents} — full list in Deep Dive
         </p>
       )}
     </>
