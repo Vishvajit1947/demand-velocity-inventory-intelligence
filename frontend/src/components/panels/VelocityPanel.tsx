@@ -89,7 +89,7 @@ export function VelocityPanel({ result, loading = false }: VelocityPanelProps) {
   );
 
   return (
-    <GlassPanel animate={false}>
+    <GlassPanel animate={false} className="h-full">
       <PanelState
         loading={loading}
         hasData={!!result}
@@ -119,15 +119,14 @@ function VelocityContent({ result, reduce }: { result: ForecastResult; reduce: b
         mode: "gauge+number",
         // gauge.value drives the needle; we use the clamped value.
         value: gaugeValue,
-        // The built-in Plotly number shows the clamped value in small secondary text.
-        // The authoritative headline number is the absolutely-positioned overlay div below.
+        // Hide Plotly's built-in number — the authoritative value is the overlay div below.
         number: {
           valueformat: ".0f",
           suffix: "%",
           font: {
-            color: "rgba(232,238,249,0.35)", // dimmed — overlay is the hero
+            color: "rgba(0,0,0,0)", // fully transparent — overlay is the hero
             family: "JetBrains Mono, monospace",
-            size: 18,
+            size: 0,
           },
         },
         gauge: {
@@ -168,9 +167,10 @@ function VelocityContent({ result, reduce }: { result: ForecastResult; reduce: b
     () => ({
       paper_bgcolor: "rgba(0,0,0,0)",
       plot_bgcolor:  "rgba(0,0,0,0)",
-      margin: { t: 8, b: 8, l: 24, r: 24 },
+      margin: { t: 8, b: 0, l: 24, r: 24 },
       font: { color: "#E8EEF9", family: "Inter, sans-serif" },
-      height: 220,
+      // No fixed height — let the container drive the size via autosize
+      autosize: true,
       // Plotly indicator transition (disabled under reduced-motion).
       // @ts-expect-error — transition is a valid Plotly layout key for indicator
       transition: reduce ? { duration: 0 } : { duration: 600, easing: "cubic-in-out" },
@@ -192,8 +192,8 @@ function VelocityContent({ result, reduce }: { result: ForecastResult; reduce: b
         <StatusBadge kind="velocity" status={status} />
       </div>
 
-      {/* Gauge area */}
-      <div className="relative flex-1" aria-hidden="false">
+      {/* Gauge area — fills remaining flex space */}
+      <div className="relative min-h-0 flex-1" aria-hidden="false">
         <Plot
           data={data as Data[]}
           layout={layout}
@@ -202,7 +202,7 @@ function VelocityContent({ result, reduce }: { result: ForecastResult; reduce: b
             responsive: true,
             staticPlot: !!reduce,
           }}
-          style={{ width: "100%", height: "220px" }}
+          style={{ width: "100%", height: "100%" }}
           useResizeHandler
           data-testid="velocity-gauge"
         />
@@ -212,7 +212,7 @@ function VelocityContent({ result, reduce }: { result: ForecastResult; reduce: b
          * Tests assert on this element's text content.
          */}
         <div
-          className="pointer-events-none absolute inset-x-0 bottom-8 text-center"
+          className="pointer-events-none absolute inset-x-0 bottom-[18%] text-center"
           data-testid="velocity-value"
           style={{
             fontFamily: "JetBrains Mono, monospace",
