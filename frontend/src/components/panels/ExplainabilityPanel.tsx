@@ -36,9 +36,8 @@ import { signedPct, formatNumber } from "../../lib/format";
 import type { ForecastResult, FactorKind } from "../../lib/types";
 
 // ── Design tokens ──────────────────────────────────────────────────────────────
-const ROSE   = "#FF5C7A";
 const CYAN   = "#2FE6FF";
-const LIME   = "#4DFFB0";
+const AMBER  = "#FFC24D";
 const VIOLET = "#8B5CFF";
 const MUTED  = "#8A97B2";
 const GRID   = "rgba(120, 160, 255, 0.08)";
@@ -52,9 +51,9 @@ const KIND_ICON: Record<FactorKind, LucideIcon> = {
   trend:    TrendingUp,
 };
 const KIND_COLOR: Record<FactorKind, string> = {
-  event:    ROSE,
-  seasonal: CYAN,
-  trend:    LIME,
+  event:    AMBER,
+  seasonal: VIOLET,
+  trend:    CYAN,
 };
 
 // ── Shared tooltip styles (matches history chart) ────────────────────────────

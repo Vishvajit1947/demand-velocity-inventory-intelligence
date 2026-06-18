@@ -1,8 +1,8 @@
 /**
  * AccuracyCoherence — two radial dials showing forecast quality (MT-35).
  * Renders Accuracy + Coherence dials from `metrics`, each colored by band,
- * with a band-word text label (color is never the only indicator, 06 §6)
- * and a mono caption row showing sMAPE / MAE / RMSE.
+ * with a band-word text label (color is never the only indicator, 06 §6),
+ * a per-product expectation band line, and a mono caption row showing sMAPE / MAE / RMSE.
  *
  * Uses MT-30 RadialDial (ring + center value + CSS animation),
  * GlassPanel, SectionTitle. Metrics type from MT-31.
@@ -14,16 +14,21 @@ import { SectionTitle } from "../ui/SectionTitle";
 import { Skeleton } from "../ui/Skeleton";
 import { PanelState } from "../ui/PanelState";
 import { accentStyle, type AccentStyle } from "../../lib/status";
-import type { Metrics } from "../../lib/types";
+import type { Archetype, Metrics } from "../../lib/types";
 
 export interface AccuracyCoherenceProps {
   /** The active product's metrics slice (05 §5). Optional until first forecast. */
   metrics?: Metrics;
   /** MT-42: shows skeleton while true (06 §5 Loading). */
   loading?: boolean;
+  /** Archetype of the selected product — drives per-product expectation band (05 §3). */
+  archetype?: Archetype;
 }
 
-/** Accuracy band → {AccentStyle, word} — LOCKED thresholds (MT-35 §4). */
+/**
+ * Accuracy band → {AccentStyle, word} — LOCKED thresholds (06 §2, MT-35 §4).
+ * ≥75 Strong/lime | 60–74 Solid/cyan | 40–59 Weak/amber | <40 Poor/rose
+ */
 export function accuracyBand(accuracy: number): { accent: AccentStyle; word: string } {
   if (accuracy >= 75) return { accent: accentStyle("lime"), word: "Strong" };
   if (accuracy >= 60) return { accent: accentStyle("cyan"), word: "Solid" };
@@ -35,7 +40,7 @@ export function accuracyBand(accuracy: number): { accent: AccentStyle; word: str
  * Coherence band → {AccentStyle, word}.
  * Driven by the API label (05 §5) so frontend never re-derives the metric.
  * Numeric fallback when label is absent/unknown (MT-35 §4).
- * MT-35 §4 locks: Strong→lime, Moderate→amber, Weak→rose.
+ * 06 §2: Strong→lime, Moderate→amber, Weak→rose.
  */
 export function coherenceBand(
   coherence: number,
@@ -60,9 +65,30 @@ export function coherenceBand(
   return { accent, word };
 }
 
-export function AccuracyCoherence({ metrics, loading = false }: AccuracyCoherenceProps) {
+/**
+ * Per-archetype expected score range string.
+ * Renders below each dial label to contextualise low scores on spiky products.
+ */
+export function expectationBand(archetype?: Archetype): string {
+  switch (archetype) {
+    case "Event-driven":
+      return "Expected range: 25–50 for event products";
+    case "Seasonal":
+      return "Expected range: 55–75";
+    case "Perishable seasonal":
+      return "Expected range: 50–70";
+    case "Stable baseline":
+      return "Expected range: 70–90";
+    default:
+      return "";
+  }
+}
+
+export function AccuracyCoherence({ metrics, loading = false, archetype }: AccuracyCoherenceProps) {
   const acc = metrics ? accuracyBand(metrics.accuracy) : null;
+  // Coherence label is read directly from the API field — never recomputed locally
   const coh = metrics ? coherenceBand(metrics.coherence, metrics.coherence_label) : null;
+  const ctxLine = expectationBand(archetype);
 
   const skeleton = (
     <div className="flex items-center justify-around gap-6">
@@ -97,6 +123,19 @@ export function AccuracyCoherence({ metrics, loading = false }: AccuracyCoherenc
                 >
                   {acc.word}
                 </span>
+                {ctxLine && (
+                  <span
+                    style={{
+                      fontSize: 11,
+                      color: "var(--text-muted)",
+                      textAlign: "center",
+                      marginTop: 4,
+                      display: "block",
+                    }}
+                  >
+                    {ctxLine}
+                  </span>
+                )}
               </div>
 
               {/* Coherence dial */}
@@ -113,11 +152,27 @@ export function AccuracyCoherence({ metrics, loading = false }: AccuracyCoherenc
                 >
                   {coh.word}
                 </span>
+                {ctxLine && (
+                  <span
+                    style={{
+                      fontSize: 11,
+                      color: "var(--text-muted)",
+                      textAlign: "center",
+                      marginTop: 4,
+                      display: "block",
+                    }}
+                  >
+                    {ctxLine}
+                  </span>
+                )}
               </div>
             </div>
 
-            {/* sMAPE / MAE / RMSE caption */}
-            <p className="text-center text-caption text-text-muted font-mono tabular-nums">
+            {/* sMAPE / MAE / RMSE caption — uses toFixed(1) for all values */}
+            <p
+              className="text-center text-text-muted font-mono tabular-nums"
+              style={{ fontSize: 11, color: "var(--text-muted)" }}
+            >
               sMAPE {metrics.smape.toFixed(1)} · MAE {metrics.mae.toFixed(2)} · RMSE{" "}
               {metrics.rmse.toFixed(2)}
             </p>

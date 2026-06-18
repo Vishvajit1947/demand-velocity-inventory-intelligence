@@ -139,7 +139,7 @@ function SeasonalContent({ result }: { result: ForecastResult }) {
                   <Cell
                     key={r.label}
                     fill={active ? CYAN : VIOLET}
-                    fillOpacity={active ? 1 : 0.35}
+                    fillOpacity={active ? 0.9 : 0.45}
                     data-testid={`month-${r.label}`}
                     data-active={active ? "true" : "false"}
                   />
@@ -149,6 +149,9 @@ function SeasonalContent({ result }: { result: ForecastResult }) {
           </BarChart>
         </ResponsiveContainer>
       </div>
+      <p style={{ color: "var(--text-muted)", fontSize: 11, fontFamily: "Inter, sans-serif", marginTop: 2 }}>
+        Current month highlighted in cyan
+      </p>
 
       {/* (b) Weekday bars — 7 bars, Sat→Fri */}
       <div className="flex flex-col gap-1">

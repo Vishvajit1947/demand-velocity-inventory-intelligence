@@ -57,6 +57,9 @@ export function EventImpactPanel({ result, loading = false }: EventImpactPanelPr
     <GlassPanel animate={false}>
       <div className="flex h-full flex-col gap-4" data-testid="event-impact-panel">
         <SectionTitle title="Event Impact" />
+        {/* max-height keeps the panel ≈ SeasonalTrendPanel height; overflow:hidden
+           enforces it even if the bar chart somehow exceeds the top-5 budget. */}
+      <div style={{ maxHeight: 480, overflow: "hidden" }}>
         <PanelState
           loading={loading}
           hasData={!!result}
@@ -65,6 +68,7 @@ export function EventImpactPanel({ result, loading = false }: EventImpactPanelPr
         >
           {result && <EventImpactContent result={result} />}
         </PanelState>
+      </div>
       </div>
     </GlassPanel>
   );
@@ -75,13 +79,19 @@ function EventImpactContent({ result }: { result: ForecastResult }) {
   const reduce = useReducedMotion();
   const { event_uplift, events_in_horizon, horizon_dates } = result;
 
+  const totalEvents = Object.keys(event_uplift ?? {}).length;
+
+  // Sort by absolute value descending, then take at most 5.
   const rows = useMemo<UpliftRow[]>(
     () =>
       Object.entries(event_uplift ?? {})
         .map(([name, value]) => ({ name, value }))
-        .sort((a, b) => Math.abs(b.value) - Math.abs(a.value)),
+        .sort((a, b) => Math.abs(b.value) - Math.abs(a.value))
+        .slice(0, 5),
     [event_uplift],
   );
+
+  const shownCount = rows.length; // Math.min(5, totalEvents)
 
   const lastIdx = Math.max(1, (horizon_dates?.length ?? 1) - 1);
 
@@ -96,11 +106,112 @@ function EventImpactContent({ result }: { result: ForecastResult }) {
     [events_in_horizon, horizon_dates, lastIdx],
   );
 
-  const chartHeight = Math.max(140, rows.length * 38);
+  // Height based on top-5 count only — keeps panel compact.
+  const chartHeight = Math.max(140, shownCount * 38);
 
   return (
     <>
-      {/* (a) Uplift horizontal bar chart */}
+      {/* (a) Horizon timeline strip — "events in this 28-day window" */}
+      {/*
+       * Layout constants (all in px, must match the container height):
+       *   STRIP_H  = 64  — total track height
+       *   DOT_SIZE = 12  — h-3 w-3
+       *   CENTER   = 32  — vertical midpoint of the strip (STRIP_H / 2)
+       *   DOT_TOP  = CENTER - DOT_SIZE/2 = 26  — positions dot exactly on the center line
+       *   LABEL_ABOVE_TOP = DOT_TOP - 4 - 14 = 8  — label sits 4px above the dot (14px line-height)
+       *   LABEL_BELOW_TOP = DOT_TOP + DOT_SIZE + 4 = 42  — label sits 4px below the dot
+       *
+       * Each event is rendered as three independent absolutely-positioned elements
+       * (label, dot, label) all anchored to the same `left` value so the dot is
+       * always exactly on the center line regardless of label content length.
+       */}
+      <div className="mt-1" data-testid="horizon-strip">
+        <div
+          className="mb-2 flex items-center justify-between text-[11px]"
+          style={{ color: MUTED, fontFamily: "JetBrains Mono, monospace" }}
+        >
+          <span>{horizon_dates?.[0] ?? "—"}</span>
+          <span>events in this 28-day window</span>
+          <span>{horizon_dates?.[horizon_dates.length - 1] ?? "—"}</span>
+        </div>
+
+        {/* Fixed-height track — 64px gives 26px above center + 12px dot + 26px below */}
+        <div
+          className="relative w-full overflow-visible rounded-full"
+          style={{
+            height: 64,
+            border: "1px solid var(--border-glass)",
+            background: "rgba(18,26,44,0.4)",
+          }}
+        >
+          {ticks.length === 0 ? (
+            <span
+              className="absolute inset-0 flex items-center justify-center text-[11px]"
+              style={{ color: MUTED }}
+            >
+              No events in this 28-day window.
+            </span>
+          ) : (
+            ticks.map((t, i) => {
+              const above = i % 2 === 0;
+              // All magic numbers derived from the layout constants above
+              const DOT_TOP  = 26;  // (64/2) - (12/2)
+              const LABEL_H  = 14;  // single-line height at font-size 10px
+              const GAP      = 4;   // px gap between dot edge and label
+              const labelTop = above
+                ? DOT_TOP - GAP - LABEL_H   // 8
+                : DOT_TOP + 12 + GAP;       // 42
+
+              return (
+                <div
+                  key={`${t.date}-${t.name}`}
+                  data-testid="horizon-event"
+                >
+                  {/* Dot — always on the center line */}
+                  <span
+                    className="absolute block h-3 w-3 -translate-x-1/2 rounded-full"
+                    style={{
+                      left: `${t.pct}%`,
+                      top: DOT_TOP,
+                      background: CYAN,
+                      boxShadow: `0 0 10px ${CYAN}`,
+                    }}
+                  />
+                  {/* Label — strictly above or below, same gap every time */}
+                  <span
+                    className="absolute -translate-x-1/2 text-center text-[10px] leading-[14px]"
+                    style={{
+                      left: `${t.pct}%`,
+                      top: labelTop,
+                      width: 80,
+                      color: "#E8EEF9",
+                      fontFamily: "Inter, sans-serif",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                    title={`${t.name} — ${t.date}`}
+                  >
+                    {t.name}
+                  </span>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+
+      {/* Separator between horizon strip and bar chart */}
+      <hr style={{ border: "none", borderTop: `1px solid ${GRID}`, margin: "4px 0" }} />
+
+      {/* (b) Top-5 historical impact bar chart */}
+      <p
+        className="text-[11px]"
+        style={{ color: MUTED, fontFamily: "JetBrains Mono, monospace", marginBottom: 4 }}
+      >
+        top 5 historical impact
+      </p>
+
       {rows.length === 0 ? (
         <p className="text-[13px]" style={{ color: MUTED, fontFamily: "Inter, sans-serif" }}>
           No event uplift profile for this product.
@@ -159,95 +270,20 @@ function EventImpactContent({ result }: { result: ForecastResult }) {
         </div>
       )}
 
-      {/* (b) Horizon timeline strip */}
-      {/*
-       * Layout constants (all in px, must match the container height):
-       *   STRIP_H  = 64  — total track height
-       *   DOT_SIZE = 12  — h-3 w-3
-       *   CENTER   = 32  — vertical midpoint of the strip (STRIP_H / 2)
-       *   DOT_TOP  = CENTER - DOT_SIZE/2 = 26  — positions dot exactly on the center line
-       *   LABEL_ABOVE_TOP = DOT_TOP - 4 - 14 = 8  — label sits 4px above the dot (14px line-height)
-       *   LABEL_BELOW_TOP = DOT_TOP + DOT_SIZE + 4 = 42  — label sits 4px below the dot
-       *
-       * Each event is rendered as three independent absolutely-positioned elements
-       * (label, dot, label) all anchored to the same `left` value so the dot is
-       * always exactly on the center line regardless of label content length.
-       */}
-      <div className="mt-1" data-testid="horizon-strip">
-        <div
-          className="mb-2 flex items-center justify-between text-[11px]"
-          style={{ color: MUTED, fontFamily: "JetBrains Mono, monospace" }}
-        >
-          <span>{horizon_dates?.[0] ?? "—"}</span>
-          <span>28-day horizon</span>
-          <span>{horizon_dates?.[horizon_dates.length - 1] ?? "—"}</span>
-        </div>
-
-        {/* Fixed-height track — 64px gives 26px above center + 12px dot + 26px below */}
-        <div
-          className="relative w-full overflow-visible rounded-full"
+      {/* (c) Muted caption — "Showing n of total events — full list in Deep Dive" */}
+      {totalEvents > 0 && (
+        <p
           style={{
-            height: 64,
-            border: "1px solid var(--border-glass)",
-            background: "rgba(18,26,44,0.4)",
+            fontSize: 11,
+            color: "var(--text-muted)",
+            fontFamily: "Inter, sans-serif",
+            margin: "4px 0 0",
           }}
+          data-testid="event-impact-caption"
         >
-          {ticks.length === 0 ? (
-            <span
-              className="absolute inset-0 flex items-center justify-center text-[11px]"
-              style={{ color: MUTED }}
-            >
-              No events in this 28-day window.
-            </span>
-          ) : (
-            ticks.map((t, i) => {
-              const above = i % 2 === 0;
-              // All magic numbers derived from the layout constants above
-              const DOT_TOP   = 26;   // (64/2) - (12/2)
-              const LABEL_H   = 14;   // single-line height at font-size 10px
-              const GAP       = 4;    // px gap between dot edge and label
-              const labelTop  = above
-                ? DOT_TOP - GAP - LABEL_H        // 8
-                : DOT_TOP + 12 + GAP;            // 42
-
-              return (
-                <div
-                  key={`${t.date}-${t.name}`}
-                  data-testid="horizon-event"
-                >
-                  {/* Dot — always on the center line */}
-                  <span
-                    className="absolute block h-3 w-3 -translate-x-1/2 rounded-full"
-                    style={{
-                      left: `${t.pct}%`,
-                      top: DOT_TOP,
-                      background: CYAN,
-                      boxShadow: `0 0 10px ${CYAN}`,
-                    }}
-                  />
-                  {/* Label — strictly above or below, same gap every time */}
-                  <span
-                    className="absolute -translate-x-1/2 text-center text-[10px] leading-[14px]"
-                    style={{
-                      left: `${t.pct}%`,
-                      top: labelTop,
-                      width: 80,
-                      color: "#E8EEF9",
-                      fontFamily: "Inter, sans-serif",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
-                    title={`${t.name} — ${t.date}`}
-                  >
-                    {t.name}
-                  </span>
-                </div>
-              );
-            })
-          )}
-        </div>
-      </div>
+          Showing {shownCount} of {totalEvents} events — full list in Deep Dive
+        </p>
+      )}
     </>
   );
 }

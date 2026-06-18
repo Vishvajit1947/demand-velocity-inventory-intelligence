@@ -1,9 +1,9 @@
 /**
- * InventoryRiskPanel — P6 Inventory Risk (MT-40).
+ * InventoryRiskPanel — P4 Inventory Risk (PRIMARY OBJECTIVE).
  * MT-42 edit: added `loading?` + `result?` props + PanelState wrapper (06 §5).
  *
  * (a) Stockout-risk StatusBadge + optional "Overstock" pill.
- * (b) Recharts LineChart of projected_stock[28] with dashed safety_stock.
+ * (b) Recharts LineChart of projected_stock[28] split into safe (cyan) / danger (rose dashed).
  * (c) Reorder card: count-up recommended_order_qty + figures.
  * 06 §4 P6, §2 tokens, §7 libs, §2 Motion, §6 a11y.
  */
@@ -18,6 +18,7 @@ import {
   CartesianGrid,
   Tooltip,
   ReferenceLine,
+  ReferenceDot,
   ResponsiveContainer,
 } from "recharts";
 import { GlassPanel } from "../ui/GlassPanel";
@@ -29,14 +30,14 @@ import { formatNumber } from "../../lib/format";
 import type { ForecastResult } from "../../lib/types";
 
 // ── Design tokens (06 §2) ─────────────────────────────────────────────────────
-const CYAN   = "#2FE6FF";
-const AMBER  = "#FFC24D";
-const ROSE   = "#FF5C7A";
+const CYAN   = "var(--accent-cyan)";
+const AMBER  = "var(--accent-amber)";
+const ROSE   = "var(--accent-rose)";
 const VIOLET = "#8B5CFF";
 const MUTED  = "#8A97B2";
 const GRID   = "rgba(120, 160, 255, 0.08)";
 
-interface StockRow { day: number; date: string; stock: number }
+interface StockRow { day: number; date: string; safe: number | null; danger: number | null }
 
 export interface InventoryRiskPanelProps {
   /** Optional until first forecast. */
@@ -58,7 +59,26 @@ export function InventoryRiskPanel({ result, loading = false }: InventoryRiskPan
     <GlassPanel animate={false}>
       <div className="flex h-full flex-col gap-4" data-testid="inventory-risk-panel">
         <div className="flex items-center justify-between">
-          <SectionTitle title="Inventory Risk" className="mb-0" />
+          <div className="flex items-center">
+            <SectionTitle title="Inventory Risk" className="mb-0" />
+            <span
+              style={{
+                fontSize: 10,
+                padding: "2px 7px",
+                borderRadius: 9999,
+                background: "rgba(255,194,77,0.15)",
+                color: "var(--accent-amber)",
+                border: "1px solid rgba(255,194,77,0.3)",
+                marginLeft: 8,
+                fontFamily: "Inter, sans-serif",
+                fontWeight: 600,
+                letterSpacing: "0.04em",
+                whiteSpace: "nowrap",
+              }}
+            >
+              PRIMARY OBJECTIVE
+            </span>
+          </div>
         </div>
         <PanelState
           loading={loading}
@@ -79,13 +99,24 @@ function InventoryRiskContent({ result }: { result: ForecastResult }) {
   const dates = result.horizon_dates ?? [];
 
   const rows = useMemo<StockRow[]>(
-    () =>
-      (inv.projected_stock ?? []).map((stock, i) => ({
-        day: i + 1,
-        date: dates[i] ?? "",
-        stock,
-      })),
-    [inv.projected_stock, dates],
+    () => {
+      const stock = inv.projected_stock ?? [];
+      const safety = inv.safety_stock;
+      // Find the first index where stock dips at or below safety_stock
+      const crossIdx = stock.findIndex((s) => s <= safety);
+      return stock.map((s, i) => {
+        const inDanger = crossIdx >= 0 && i >= crossIdx;
+        return {
+          day: i + 1,
+          date: dates[i] ?? "",
+          // safe segment: present up to and including the crossover point (for seamless join)
+          safe: !inDanger || i === crossIdx ? s : null,
+          // danger segment: present from crossover point onward (starts at crossIdx for join)
+          danger: inDanger ? s : null,
+        };
+      });
+    },
+    [inv.projected_stock, inv.safety_stock, dates],
   );
 
   const showStockoutMarker = inv.cover_days <= 28;
@@ -138,28 +169,34 @@ function InventoryRiskContent({ result }: { result: ForecastResult }) {
               labelFormatter={(d: number) => `Day ${d}`}
               formatter={(v: number) => [formatNumber(v, 1), "projected stock"]}
             />
+            {/* Safety stock dashed threshold — amber, clearly visible */}
             <ReferenceLine
               y={inv.safety_stock}
               stroke={AMBER}
+              strokeOpacity={0.7}
               strokeDasharray="6 4"
+              strokeWidth={1.5}
               label={{
                 value: "Safety stock",
                 position: "insideTopRight",
                 fill: AMBER,
                 fontSize: 11,
                 fontFamily: "JetBrains Mono, monospace",
+                opacity: 0.9,
               }}
               data-testid="safety-ref"
             />
+            {/* Stockout annotation as ReferenceDot at (cover_days, 0) */}
             {showStockoutMarker && (
-              <ReferenceLine
+              <ReferenceDot
                 x={inv.cover_days}
-                stroke={ROSE}
-                strokeDasharray="2 3"
+                y={0}
+                r={5}
+                fill={ROSE}
+                stroke="none"
                 label={{
-                  value: `Stockout ~D${inv.cover_days}`,
+                  value: `Day ${inv.cover_days} — stockout`,
                   position: "insideTopLeft",
-                  offset: 6,
                   fill: ROSE,
                   fontSize: 11,
                   fontWeight: 600,
@@ -168,15 +205,30 @@ function InventoryRiskContent({ result }: { result: ForecastResult }) {
                 data-testid="stockout-ref"
               />
             )}
+            {/* Safe segment — cyan */}
             <Line
               type="monotone"
-              dataKey="stock"
+              dataKey="safe"
               stroke={CYAN}
               strokeWidth={2.5}
               dot={false}
+              connectNulls={false}
               isAnimationActive={!reduce}
               style={{ filter: `drop-shadow(0 0 6px ${CYAN})` }}
-              data-testid="stock-line"
+              data-testid="stock-line-safe"
+            />
+            {/* Danger segment — rose dashed */}
+            <Line
+              type="monotone"
+              dataKey="danger"
+              stroke={ROSE}
+              strokeWidth={2.5}
+              strokeDasharray="4 3"
+              dot={false}
+              connectNulls={false}
+              isAnimationActive={!reduce}
+              style={{ filter: `drop-shadow(0 0 6px ${ROSE})` }}
+              data-testid="stock-line-danger"
             />
           </LineChart>
         </ResponsiveContainer>

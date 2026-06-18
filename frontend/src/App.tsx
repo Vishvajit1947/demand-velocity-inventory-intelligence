@@ -5,7 +5,7 @@
  */
 import { useEffect, useState } from "react";
 import { ForecastControlBar } from "./components/controls/ForecastControlBar";
-import { useBounds, useForecastMutation } from "./hooks/useForecast";
+import { useBounds, useForecastMutation, useProducts } from "./hooks/useForecast";
 import { ToastProvider } from "./components/ui/Toast";
 import { ToastHost } from "./components/ui/ToastHost";
 import { EntranceList, EntranceItem } from "./components/ui/EntranceList";
@@ -31,6 +31,8 @@ export default function App() {
 
   // ── Default date to last_selectable_date once bounds load (06 §4) ──────
   const { data: bounds } = useBounds();
+  // Product list — static, cached (05 §3) — used for per-product archetype context
+  const { data: productsData } = useProducts();
   useEffect(() => {
     if (bounds && !selectedDate) {
       setSelectedDate(bounds.last_selectable_date);
@@ -65,6 +67,11 @@ export default function App() {
   const selectedResult =
     forecastData?.results?.find((r) => r.series_id === activeSeriesId) ??
     forecastData?.results?.[0];
+
+  // Archetype of the active product — drives expectation band in AccuracyCoherence
+  const activeArchetype = productsData?.products?.find(
+    (p) => p.series_id === selectedResult?.series_id,
+  )?.archetype;
 
   const isPending = forecast.isPending;
 
@@ -128,32 +135,33 @@ export default function App() {
               <VelocityPanel result={selectedResult} loading={isPending} />
             </EntranceItem>
 
-            {/* P4 — Forecast Quality / Accuracy & Coherence (4 cols at xl) */}
-            <EntranceItem className="min-h-[260px] xl:col-span-4">
-              <AccuracyCoherence
-                metrics={selectedResult?.metrics}
-                loading={isPending}
-              />
+            {/* P4 — Inventory Risk (8 cols at xl) — PRIMARY OBJECTIVE */}
+            <EntranceItem className="min-h-[300px] xl:col-span-8">
+              <InventoryRiskPanel result={selectedResult} loading={isPending} />
             </EntranceItem>
 
-            {/* P5 — Event Impact (8 cols at xl) */}
-            <EntranceItem className="min-h-[260px] xl:col-span-8">
+            {/* P5 — Explainability (4 cols at xl) */}
+            <EntranceItem className="min-h-[300px] xl:col-span-4">
+              <ExplainabilityPanel result={selectedResult} loading={isPending} />
+            </EntranceItem>
+
+            {/* P6 — Event Impact (6 cols at xl) */}
+            <EntranceItem className="min-h-[260px] xl:col-span-6">
               <EventImpactPanel result={selectedResult} loading={isPending} />
             </EntranceItem>
 
-            {/* P6 — Seasonal Trend (6 cols at xl) */}
+            {/* P7 — Seasonal Trend (6 cols at xl) */}
             <EntranceItem className="min-h-[260px] xl:col-span-6">
               <SeasonalPanel result={selectedResult} loading={isPending} />
             </EntranceItem>
 
-            {/* P6 — Inventory Risk (6 cols at xl) */}
-            <EntranceItem className="min-h-[300px] xl:col-span-6">
-              <InventoryRiskPanel result={selectedResult} loading={isPending} />
-            </EntranceItem>
-
-            {/* P7 — Explainability (6 cols at xl) */}
-            <EntranceItem className="min-h-[300px] xl:col-span-6">
-              <ExplainabilityPanel result={selectedResult} loading={isPending} />
+            {/* P8 — Forecast Quality / Accuracy & Coherence (4 cols at xl) */}
+            <EntranceItem className="min-h-[260px] xl:col-span-4">
+              <AccuracyCoherence
+                metrics={selectedResult?.metrics}
+                loading={isPending}
+                archetype={activeArchetype}
+              />
             </EntranceItem>
 
           </EntranceList>
