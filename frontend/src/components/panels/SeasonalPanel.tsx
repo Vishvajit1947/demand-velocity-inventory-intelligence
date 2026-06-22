@@ -103,18 +103,39 @@ function SeasonalContent({ result }: { result: ForecastResult }) {
 
   return (
     <>
-      {/* Callout */}
-      <p
-        className="text-[14px]"
-        style={{ color: "#E8EEF9", fontFamily: "Inter, sans-serif" }}
-        data-testid="seasonal-callout"
-      >
-        {monthName} runs{" "}
-        <span style={{ color: CYAN, fontFamily: "JetBrains Mono, monospace", fontWeight: 600 }}>
-          {signedPct(month_vs_avg_pct)}
-        </span>{" "}
-        vs average
-      </p>
+      {/* Callout + current-month legend on the same row */}
+      <div className="flex items-center justify-between gap-2">
+        <p
+          className="text-[14px]"
+          style={{ color: "#E8EEF9", fontFamily: "Inter, sans-serif" }}
+          data-testid="seasonal-callout"
+        >
+          {monthName} runs{" "}
+          <span style={{ color: CYAN, fontFamily: "JetBrains Mono, monospace", fontWeight: 600 }}>
+            {signedPct(month_vs_avg_pct)}
+          </span>{" "}
+          vs average
+        </p>
+
+        {/* Dot legend — replaces the old "Current month highlighted in cyan" text */}
+        <span
+          className="flex flex-shrink-0 items-center gap-[5px]"
+          style={{ fontSize: 11, color: MUTED, fontFamily: "Inter, sans-serif", whiteSpace: "nowrap" }}
+        >
+          <span
+            style={{
+              display: "inline-block",
+              width: 8,
+              height: 8,
+              borderRadius: "50%",
+              background: CYAN,
+              boxShadow: `0 0 6px ${CYAN}AA`,
+              flexShrink: 0,
+            }}
+          />
+          Current month
+        </span>
+      </div>
 
       {/* (a) Monthly bars — 12 bars */}
       <div style={{ width: "100%", height: 170 }} data-testid="monthly-chart">
@@ -149,10 +170,7 @@ function SeasonalContent({ result }: { result: ForecastResult }) {
           </BarChart>
         </ResponsiveContainer>
       </div>
-      <p style={{ color: "var(--text-muted)", fontSize: 11, fontFamily: "Inter, sans-serif", marginTop: 2 }}>
-        Current month highlighted in cyan
-      </p>
-
+      
       {/* (b) Weekday bars — 7 bars, Sat→Fri */}
       <div className="flex flex-col gap-1">
         <span className="text-[12px]" style={{ color: MUTED, fontFamily: "Inter, sans-serif" }}>
