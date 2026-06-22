@@ -64,21 +64,16 @@ export function ForecastResult({
   // legend visibility: keys are "actual" and "forecast_<series_id>"
   const [hidden, setHidden] = useState<Set<string>>(new Set());
 
-  // ── View mode: auto-init normalized when >1 product ─────────────────────
-  const [viewMode, setViewMode] = useState<"normalized" | "absolute">(
-    results.length > 1 ? "normalized" : "absolute",
-  );
-  // Track the user's manual override so we don't clobber their choice
+  // ── View mode: default absolute; user can switch at any time ───────────
+  const [viewMode, setViewMode] = useState<"normalized" | "absolute">("absolute");
+  // Track the user's manual override so we don't clobber their choice on re-render
   const [userOverride, setUserOverride] = useState(false);
 
   useEffect(() => {
-    if (!userOverride) {
-      setViewMode(results.length > 1 ? "normalized" : "absolute");
-    }
-    // When product count drops back to 1, always reset to absolute (even if overridden)
-    if (results.length === 1) {
-      setViewMode("absolute");
-      setUserOverride(false);
+    // Auto-switch to normalized only when multiple products are loaded and
+    // the user hasn't manually chosen a mode yet.
+    if (!userOverride && results.length > 1) {
+      setViewMode("normalized");
     }
   }, [results.length, userOverride]);
 
@@ -341,6 +336,27 @@ function ChartBody({
 
   const isNorm = viewMode === "normalized";
 
+  // ── Compute explicit Y domain from row data so Recharts can't get stuck ──
+  // In normalized mode: scan every numeric cell across all series keys; pad 10%
+  const yDomain = useMemo<[number, number] | [number, string]>(() => {
+    if (!isNorm) return [0, "auto"];
+    const numericKeys = ["actual", "forecast", ...results.map((r) => `forecast_${r.series_id}`)];
+    let lo = Infinity;
+    let hi = -Infinity;
+    rows.forEach((row) => {
+      numericKeys.forEach((k) => {
+        const v = row[k];
+        if (typeof v === "number" && isFinite(v)) {
+          if (v < lo) lo = v;
+          if (v > hi) hi = v;
+        }
+      });
+    });
+    if (!isFinite(lo) || !isFinite(hi)) return [-100, 100];
+    const pad = Math.max((hi - lo) * 0.1, 5);
+    return [Math.floor(lo - pad), Math.ceil(hi + pad)];
+  }, [isNorm, rows, results]);
+
   return (
     <>
       {/* ── Custom legend with toggle (06 §4 + MT-50 Change 7) ────────── */}
@@ -377,7 +393,7 @@ function ChartBody({
       {/* ── Chart ──────────────────────────────────────────────────────── */}
       <div className="h-[360px] w-full">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={rows} margin={{ top: 28, right: 16, bottom: 8, left: 0 }}>
+          <LineChart key={viewMode} data={rows} margin={{ top: 28, right: 16, bottom: 8, left: 0 }}>
             <defs>
               <filter id="forecast-glow" x="-20%" y="-20%" width="140%" height="140%">
                 <feGaussianBlur stdDeviation="3" result="blur" />
@@ -412,7 +428,7 @@ function ChartBody({
               }}
               stroke="var(--border-glass)"
               allowDecimals={isNorm}
-              domain={isNorm ? ["auto", "auto"] : [0, "auto"]}
+              domain={yDomain}
               tickFormatter={
                 isNorm
                   ? (v: number) => `${v > 0 ? "+" : ""}${Math.round(v)}%`
@@ -472,14 +488,9 @@ function ChartBody({
             {isNorm && (
               <ReferenceLine
                 y={0}
-                stroke="var(--text-muted)"
+                stroke="#facc15"
+                strokeOpacity={0.5}
                 strokeDasharray="4 3"
-                label={{
-                  value: "product avg",
-                  position: "insideTopRight",
-                  fontSize: 10,
-                  fill: "var(--text-muted)",
-                }}
               />
             )}
 
@@ -526,6 +537,32 @@ function ChartBody({
           </LineChart>
         </ResponsiveContainer>
       </div>
+
+      {/* ── Normalized footer: product avg key ──────────────────────────── */}
+      {isNorm && (
+        <div
+          className="mt-2 flex items-center gap-2"
+          style={{ paddingLeft: 4 }}
+        >
+          <svg width="22" height="10" aria-hidden="true" style={{ flexShrink: 0 }}>
+            <line
+              x1="0" y1="5" x2="22" y2="5"
+              stroke="#facc15"
+              strokeWidth="1.5"
+              strokeDasharray="3 2"
+            />
+          </svg>
+          <span
+            style={{
+              color: "var(--text-muted)",
+              fontSize: 11,
+              fontFamily: "JetBrains Mono, monospace",
+            }}
+          >
+            dashed line = product avg (0% baseline)
+          </span>
+        </div>
+      )}
     </>
   );
 }
