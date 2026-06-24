@@ -22,19 +22,23 @@ import { PanelState } from "../ui/PanelState";
 import { signedPct } from "../../lib/format";
 import type { ForecastResult, VelocityStatus } from "../../lib/types";
 
-// ── Band colors — EXACT tokens from 06 §2 status→color map ──────────────────
-const ROSE  = "#FF5C7A";   // --accent-rose  : Critical Decline
-const AMBER = "#FFC24D";   // --accent-amber : Declining
-const CYAN  = "#2FE6FF";   // --accent-cyan  : Stable
-const LIME  = "#4DFFB0";   // --accent-lime  : Growing / Accelerating
+// ── Band colors — reference image exact values ────────────────────────────────
+const MAROON    = "#7A2E3F";   // −100 to −50  : Critical Decline
+const BROWN     = "#7A5B2E";   // −50  to −10  : Declining
+const DEEP_TEAL = "#144E5A";   // −10  to  10  : Stable
+const TEAL_GRN  = "#1F6B5B";   //  10  to  40  : Growing
+const DARK_GRN  = "#145B4A";   //  40  to 100  : Accelerating
 
-/** Status → arc color (06 §2). */
+const NEEDLE_COLOR = "#00F0B5"; // mint green needle
+
+/** Status → accent color (kept for external consumers / future use). */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const STATUS_COLOR: Record<VelocityStatus, string> = {
-  "Critical Decline": ROSE,
-  Declining:          AMBER,
-  Stable:             CYAN,
-  Growing:            LIME,
-  Accelerating:       LIME,
+  "Critical Decline": MAROON,
+  Declining:          BROWN,
+  Stable:             DEEP_TEAL,
+  Growing:            NEEDLE_COLOR,
+  Accelerating:       NEEDLE_COLOR,
 };
 
 /**
@@ -42,11 +46,11 @@ const STATUS_COLOR: Record<VelocityStatus, string> = {
  * Boundaries −50, −10, 10, 40 per 03 §6.3 / 07 §2.
  */
 const BANDS: { range: [number, number]; color: string }[] = [
-  { range: [-100, -50], color: ROSE  },
-  { range: [-50,  -10], color: AMBER },
-  { range: [-10,   10], color: CYAN  },
-  { range: [10,    40], color: LIME  },
-  { range: [40,   100], color: LIME  },
+  { range: [-100, -50], color: MAROON    },
+  { range: [-50,  -10], color: BROWN     },
+  { range: [-10,   10], color: DEEP_TEAL },
+  { range: [10,    40], color: TEAL_GRN  },
+  { range: [40,   100], color: DARK_GRN  },
 ];
 
 /** Clamp n into [lo, hi]. */
@@ -61,17 +65,18 @@ function withAlpha(hex: string, alpha: number): string {
 }
 
 // ── SVG gauge geometry ────────────────────────────────────────────────────────
-// The arc spans 210° total: from 195° to 345° measured clockwise from 12 o'clock
-// (i.e. −105° to +105° from 3 o'clock in standard SVG math).
-// We use a 220×140 viewBox so the arc sits in the upper portion and labels fit.
-const CX = 110;            // arc centre x
-const CY = 126;            // arc centre y (slightly below mid so arc sits high)
-const R  = 96;             // outer arc radius
-const R_INNER = 72;        // inner arc radius (band thickness = 24px)
-const NEEDLE_LEN = 82;     // needle length from centre
-const NEEDLE_BASE = 6;     // half-width of needle base triangle
-const ARC_DEG = 210;       // total arc span in degrees
-const ARC_START = 195;     // start angle in SVG degrees (clockwise from right/3 o'clock)
+// The arc spans 180° total: a clean semi-circle from left to right (9 o'clock to 3 o'clock).
+// In SVG angle convention (clockwise from 3 o'clock / right):
+//   180° = left (−100 end),  0° = right (+100 end).
+// We drive from 180° → 360° (= 0°) going clockwise, which produces a top-facing arc.
+const CX = 130;            // arc centre x (shifted right to balance label space)
+const CY = 148;            // arc centre y — at the bottom so the arc opens upward
+const R  = 110;            // outer arc radius
+const R_INNER = 78;        // inner arc radius (band thickness = 32px — thick like reference)
+const NEEDLE_LEN = 100;    // needle length from centre
+const NEEDLE_WIDTH = 2.5;  // stroke width of needle line
+const ARC_DEG = 180;       // 180° semi-circle
+const ARC_START = 180;     // start angle (left / −100)
 
 /** Map a value in [−100, 100] to an SVG angle (degrees, clockwise from 3 o'clock). */
 function valueToAngle(v: number): number {
@@ -86,7 +91,7 @@ function polar(angleDeg: number, r: number): [number, number] {
   return [CX + r * Math.cos(rad), CY + r * Math.sin(rad)];
 }
 
-/** Build an SVG arc path for a band sector. */
+/** Build an SVG arc path for a band sector (donut slice). */
 function bandPath(startVal: number, endVal: number): string {
   const a1 = valueToAngle(startVal);
   const a2 = valueToAngle(endVal);
@@ -94,7 +99,8 @@ function bandPath(startVal: number, endVal: number): string {
   const [ox2, oy2] = polar(a2, R);
   const [ix2, iy2] = polar(a2, R_INNER);
   const [ix1, iy1] = polar(a1, R_INNER);
-  const large = a2 - a1 > 180 ? 1 : 0;
+  const sweep = a2 - a1;
+  const large = sweep > 180 ? 1 : 0;
   return [
     `M ${ox1} ${oy1}`,
     `A ${R} ${R} 0 ${large} 1 ${ox2} ${oy2}`,
@@ -104,13 +110,10 @@ function bandPath(startVal: number, endVal: number): string {
   ].join(" ");
 }
 
-/** Build an SVG needle polygon path for a given angle. */
-function needlePath(angleDeg: number): string {
+/** Build the needle as a line from centre hub to tip. */
+function needleLinePath(angleDeg: number): { x1: number; y1: number; x2: number; y2: number } {
   const [tipX, tipY] = polar(angleDeg, NEEDLE_LEN);
-  const perpAngle = angleDeg + 90;
-  const [b1x, b1y] = polar(perpAngle, NEEDLE_BASE);
-  const [b2x, b2y] = polar(perpAngle + 180, NEEDLE_BASE);
-  return `M ${b1x} ${b1y} L ${tipX} ${tipY} L ${b2x} ${b2y} Z`;
+  return { x1: CX, y1: CY, x2: tipX, y2: tipY };
 }
 
 // Tick label positions for −100, −50, −10, 10, 40, 100
@@ -150,7 +153,6 @@ function VelocityContent({ result, reduce }: { result: ForecastResult; reduce: b
   const { value, status } = result.velocity;
 
   const gaugeValue = clamp(value, -100, 100);
-  const activeColor = STATUS_COLOR[status];
   const needleAngle = valueToAngle(gaugeValue);
 
   // Pre-compute band paths — stable across re-renders unless bands change
@@ -159,16 +161,18 @@ function VelocityContent({ result, reduce }: { result: ForecastResult; reduce: b
     [],
   );
 
-  // Tick label data
+  // Tick label data — placed just outside the outer arc
   const ticks = useMemo(
     () =>
       TICK_VALS.map((v) => {
         const a = valueToAngle(v);
-        const [lx, ly] = polar(a, R + 14);
+        const [lx, ly] = polar(a, R + 16);
         return { v, lx, ly };
       }),
     [],
   );
+
+  const needle = needleLinePath(needleAngle);
 
   return (
     <motion.div
@@ -184,43 +188,29 @@ function VelocityContent({ result, reduce }: { result: ForecastResult; reduce: b
         <StatusBadge kind="velocity" status={status} />
       </div>
 
-      {/* SVG Gauge */}
+      {/* SVG Gauge — 180° semi-circular arc */}
       <div
         className="relative w-full"
-        style={{ height: 220 }}
+        style={{ height: 200 }}
         aria-hidden="true"
         data-testid="velocity-gauge"
       >
         <svg
-          viewBox="0 0 220 148"
+          viewBox="0 0 260 158"
           width="100%"
           height="100%"
           style={{ overflow: "visible" }}
         >
-          {/* Band sectors */}
+          {/* Band sectors — solid filled donut slices */}
           {bandPaths.map(({ path, color }) => (
             <path
               key={color + path.slice(0, 12)}
               d={path}
-              fill={withAlpha(color, 0.22)}
+              fill={color}
             />
           ))}
 
-          {/* Outer arc hairline */}
-          {(() => {
-            const [sx, sy] = polar(ARC_START, R);
-            const [ex, ey] = polar(ARC_START + ARC_DEG, R);
-            return (
-              <path
-                d={`M ${sx} ${sy} A ${R} ${R} 0 1 1 ${ex} ${ey}`}
-                fill="none"
-                stroke="rgba(120,160,255,0.18)"
-                strokeWidth={1}
-              />
-            );
-          })()}
-
-          {/* Tick labels */}
+          {/* Tick labels along the arc */}
           {ticks.map(({ v, lx, ly }) => (
             <text
               key={v}
@@ -228,15 +218,15 @@ function VelocityContent({ result, reduce }: { result: ForecastResult; reduce: b
               y={ly}
               textAnchor="middle"
               dominantBaseline="middle"
-              fontSize={9}
+              fontSize={9.5}
               fontFamily="JetBrains Mono, monospace"
-              fill="#8A97B2"
+              fill="rgba(255,255,255,0.65)"
             >
               {v}
             </text>
           ))}
 
-          {/* Needle — animated rotation when reduced-motion is off */}
+          {/* Needle — thin mint-green line with glow */}
           <g
             style={
               reduce
@@ -246,33 +236,36 @@ function VelocityContent({ result, reduce }: { result: ForecastResult; reduce: b
                   }
             }
           >
-            <path
-              d={needlePath(needleAngle)}
-              fill={activeColor}
-              style={{
-                filter: `drop-shadow(0 0 4px ${withAlpha(activeColor, 0.7)})`,
-              }}
+            <line
+              x1={needle.x1}
+              y1={needle.y1}
+              x2={needle.x2}
+              y2={needle.y2}
+              stroke={NEEDLE_COLOR}
+              strokeWidth={NEEDLE_WIDTH}
+              strokeLinecap="round"
+              style={{ filter: `drop-shadow(0 0 5px ${withAlpha(NEEDLE_COLOR, 0.85)})` }}
             />
           </g>
 
-          {/* Centre pivot dot */}
-          <circle cx={CX} cy={CY} r={6} fill={activeColor} />
-          <circle cx={CX} cy={CY} r={3} fill="#0A1020" />
+          {/* Centre pivot — mint green outer, dark inner */}
+          <circle cx={CX} cy={CY} r={7} fill={NEEDLE_COLOR} style={{ filter: `drop-shadow(0 0 6px ${withAlpha(NEEDLE_COLOR, 0.9)})` }} />
+          <circle cx={CX} cy={CY} r={3.5} fill="#0A1020" />
         </svg>
       </div>
 
-      {/* Real (un-clamped) value overlay */}
+      {/* Real (un-clamped) value overlay — always mint green like reference */}
       <div
         className="text-center"
         data-testid="velocity-value"
         style={{
           fontFamily: "JetBrains Mono, monospace",
           fontVariantNumeric: "tabular-nums",
-          color: activeColor,
+          color: NEEDLE_COLOR,
           fontSize: 30,
           fontWeight: 600,
           lineHeight: 1,
-          textShadow: `0 0 18px ${withAlpha(activeColor, 0.45)}`,
+          textShadow: `0 0 18px ${withAlpha(NEEDLE_COLOR, 0.45)}`,
         }}
       >
         {signedPct(value)}
