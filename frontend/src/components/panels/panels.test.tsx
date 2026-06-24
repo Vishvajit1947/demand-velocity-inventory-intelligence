@@ -116,19 +116,15 @@ describe("Panels render headline numbers from the fixture (06 §4; 07 §3)", () 
     expect(screen.getByTestId("velocity-value")).toHaveTextContent("+412%");
   });
 
-  // ── EventImpactPanel: first event_uplift key visible ──────────────────
-  it("EventImpactPanel shows event names from event_uplift", () => {
+  // ── EventImpactPanel: chart renders all event_uplift rows ────────────
+  it("EventImpactPanel renders all event_uplift rows in the chart", () => {
     render(<EventImpactPanel result={turkeyResult} />);
-    // Turkey has Thanksgiving, VeteransDay, ValentinesDay in event_uplift
-    const firstEvent = Object.keys(turkeyResult.event_uplift)[0];
-    expect(screen.getByText(new RegExp(firstEvent, "i"))).toBeInTheDocument();
-  });
-
-  it("EventImpactPanel shows events in horizon timeline strip", () => {
-    render(<EventImpactPanel result={turkeyResult} />);
-    const strip = screen.getByTestId("horizon-strip");
-    // Turkey has VeteransDay and Thanksgiving in events_in_horizon
-    expect(strip).toHaveTextContent("Thanksgiving");
+    // Turkey has Thanksgiving, VeteransDay, ValentinesDay in event_uplift (3 keys)
+    const eventCount = Object.keys(turkeyResult.event_uplift).length;
+    expect(screen.getByTestId("barchart")).toHaveAttribute(
+      "data-rows",
+      String(Math.min(eventCount, 5)),
+    );
   });
 
   // ── SeasonalPanel: month_vs_avg_pct callout ───────────────────────────

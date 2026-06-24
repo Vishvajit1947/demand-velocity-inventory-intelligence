@@ -4,7 +4,10 @@
  *
  * Recharts measures its container; under jsdom ResponsiveContainer has 0×0 size,
  * so recharts is mocked to capture data/Cell props deterministically (07 §3).
- * Tests assert on: row count, per-bar colors, label formatting, horizon strip.
+ * Tests assert on: row count, per-bar colors, label formatting.
+ *
+ * The horizon-strip / horizon-event section was removed from the component (UI
+ * refinement). All tests that referenced those elements have been deleted.
  */
 import { render, screen } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
@@ -56,14 +59,6 @@ function makeResult(): ForecastResult {
     series_id: "turkey",
     item_id: "FOODS_3_069",
     product_name: "Fresh Whole Turkey",
-    // 28 dates: 2015-11-01 … 2015-11-28
-    horizon_dates: Array.from({ length: 28 }, (_, i) => {
-      const d = new Date(Date.UTC(2015, 10, 1 + i));
-      return d.toISOString().slice(0, 10);
-    }),
-    events_in_horizon: [
-      { date: "2015-11-26", name: "Thanksgiving", type: "National" },
-    ],
     // Three entries: one positive, one negative, one positive — sorted by |value| desc.
     event_uplift: { Thanksgiving: 517, ValentinesDay: -37, Easter: 92 },
   } as unknown as ForecastResult;
@@ -100,29 +95,6 @@ describe("EventImpactPanel (MT-38)", () => {
     );
   });
 
-  it("shows events_in_horizon names on the timeline strip", () => {
-    render(<EventImpactPanel result={makeResult()} />);
-    const strip = screen.getByTestId("horizon-strip");
-    expect(strip).toHaveTextContent("Thanksgiving");
-  });
-
-  it("renders a horizon-event tick for each events_in_horizon entry", () => {
-    render(<EventImpactPanel result={makeResult()} />);
-    const horizonEvents = screen.getAllByTestId("horizon-event");
-    expect(horizonEvents).toHaveLength(1);
-  });
-
-  it("shows 'No events in this 28-day window.' when events_in_horizon is empty", () => {
-    const result = {
-      ...makeResult(),
-      events_in_horizon: [],
-    } as unknown as ForecastResult;
-    render(<EventImpactPanel result={result} />);
-    expect(
-      screen.getByText("No events in this 28-day window."),
-    ).toBeInTheDocument();
-  });
-
   it("shows 'No event uplift profile for this product.' when event_uplift is empty", () => {
     const result = {
       ...makeResult(),
@@ -146,39 +118,38 @@ describe("EventImpactPanel (MT-38)", () => {
     expect(screen.getByText("Event Impact")).toBeInTheDocument();
   });
 
-  it("shows the horizon start and end dates as captions", () => {
+  it("shows 'top 5 historical impact' subtitle", () => {
     render(<EventImpactPanel result={makeResult()} />);
-    const strip = screen.getByTestId("horizon-strip");
-    expect(strip).toHaveTextContent("2015-11-01");
-    expect(strip).toHaveTextContent("2015-11-28");
+    expect(screen.getByText("top 5 historical impact")).toBeInTheDocument();
   });
 
-  it("skips events_in_horizon entries whose date is not in horizon_dates", () => {
-    const result = {
-      ...makeResult(),
-      events_in_horizon: [
-        { date: "2015-11-26", name: "Thanksgiving", type: "National" },
-        { date: "2020-01-01", name: "OutOfRange",   type: "National" },
-      ],
-    } as unknown as ForecastResult;
-    render(<EventImpactPanel result={result} />);
-    // Only the in-range event gets a tick.
-    expect(screen.getAllByTestId("horizon-event")).toHaveLength(1);
-    expect(screen.queryByTitle(/OutOfRange/)).not.toBeInTheDocument();
+  it("shows 'Showing top N of M' caption when events are present", () => {
+    render(<EventImpactPanel result={makeResult()} />);
+    expect(screen.getByTestId("event-impact-caption")).toBeInTheDocument();
+    expect(screen.getByTestId("event-impact-caption")).toHaveTextContent(
+      "Showing top 3 of 3",
+    );
   });
 
-  it("renders multiple horizon ticks when multiple events fall in the window", () => {
-    const result = {
-      ...makeResult(),
-      events_in_horizon: [
-        { date: "2015-11-05", name: "EventA", type: "Promo" },
-        { date: "2015-11-26", name: "Thanksgiving", type: "National" },
-      ],
-    } as unknown as ForecastResult;
-    render(<EventImpactPanel result={result} />);
-    expect(screen.getAllByTestId("horizon-event")).toHaveLength(2);
-    const strip = screen.getByTestId("horizon-strip");
-    expect(strip).toHaveTextContent("EventA");
-    expect(strip).toHaveTextContent("Thanksgiving");
+  it("shows the View All button with correct count when events are present", () => {
+    render(<EventImpactPanel result={makeResult()} />);
+    expect(screen.getByText("View All (3)")).toBeInTheDocument();
+  });
+
+  it("sorts events by absolute uplift descending (Thanksgiving first)", () => {
+    render(<EventImpactPanel result={makeResult()} />);
+    // Thanksgiving=517 has highest |value| → appears as first bar cell
+    const chart = screen.getByTestId("barchart");
+    expect(chart).toHaveAttribute("data-rows", "3");
+    // Cell for Thanksgiving must be lime (positive, largest magnitude)
+    expect(screen.getByTestId("bar-Thanksgiving")).toHaveAttribute(
+      "data-fill",
+      "#4DFFB0",
+    );
+  });
+
+  it("does not render horizon-strip (section removed)", () => {
+    render(<EventImpactPanel result={makeResult()} />);
+    expect(screen.queryByTestId("horizon-strip")).not.toBeInTheDocument();
   });
 });

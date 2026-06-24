@@ -111,60 +111,73 @@ function EventImpactContent({ result }: { result: ForecastResult }) {
         )}
       </div>
 
-      {/* Bar chart — fixed height matching the seasonal panel */}
+      {/* Bar chart — expanded height to fill freed timeline space */}
       {rows.length === 0 ? (
         <p className="text-[13px]" style={{ color: MUTED, fontFamily: "Inter, sans-serif" }}>
           No event uplift profile for this product.
         </p>
       ) : (
-        <div style={{ width: "100%", height: 210 }} data-testid="event-uplift-chart">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart layout="vertical" data={rows} margin={{ top: 4, right: 56, bottom: 4, left: 8 }}>
-              <CartesianGrid horizontal={false} stroke={GRID} />
-              <XAxis
-                type="number"
-                tick={{ fill: MUTED, fontFamily: "JetBrains Mono, monospace", fontSize: 11 }}
-                tickFormatter={(v) => signedPct(Number(v))}
-                stroke={GRID}
-              />
-              <YAxis
-                type="category"
-                dataKey="name"
-                width={110}
-                tick={{ fill: "#E8EEF9", fontFamily: "Inter, sans-serif", fontSize: 12 }}
-                stroke={GRID}
-              />
-              <Tooltip
-                cursor={{ fill: "rgba(120,160,255,0.06)" }}
-                contentStyle={{
-                  background: "#0E1626",
-                  border: "1px solid rgba(120,160,255,0.12)",
-                  borderRadius: 10,
-                  color: "#E8EEF9",
-                  fontFamily: "JetBrains Mono, monospace",
-                }}
-                labelStyle={{
-                  color: "#E8EEF9",
-                  fontFamily: "Inter, sans-serif",
-                  fontWeight: 600,
-                  marginBottom: 4,
-                }}
-                itemStyle={{ color: MUTED }}
-                formatter={(v: number) => [signedPct(v), "uplift"]}
-              />
-              <Bar dataKey="value" radius={[0, 6, 6, 0]} isAnimationActive={!reduce} data-testid="event-bar">
-                {rows.map((r) => (
-                  <Cell key={r.name} fill={barColor(r.value)} data-testid={`bar-${r.name}`} />
-                ))}
-                <LabelList
-                  dataKey="value"
-                  position="right"
-                  formatter={(v: number) => signedPct(v)}
-                  style={{ fill: "#E8EEF9", fontFamily: "JetBrains Mono, monospace", fontSize: 12 }}
+        <div
+          className="flex flex-1 items-center"
+          style={{ width: "100%", minHeight: 0 }}
+          data-testid="event-uplift-chart"
+        >
+          <div style={{ width: "100%", height: 285 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                layout="vertical"
+                data={rows}
+                barSize={22}
+                barCategoryGap={22}
+                margin={{ top: 14, right: 56, bottom: 14, left: 8 }}
+              >
+                <CartesianGrid horizontal={false} stroke={GRID} />
+                <XAxis
+                  type="number"
+                  tick={{ fill: MUTED, fontFamily: "JetBrains Mono, monospace", fontSize: 11 }}
+                  tickFormatter={(v) => signedPct(Number(v))}
+                  stroke={GRID}
                 />
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+                <YAxis
+                  type="category"
+                  dataKey="name"
+                  width={110}
+                  tick={{ fill: "#E8EEF9", fontFamily: "Inter, sans-serif", fontSize: 12 }}
+                  stroke={GRID}
+                  tickMargin={6}
+                />
+                <Tooltip
+                  cursor={{ fill: "rgba(120,160,255,0.06)" }}
+                  contentStyle={{
+                    background: "#0E1626",
+                    border: "1px solid rgba(120,160,255,0.12)",
+                    borderRadius: 10,
+                    color: "#E8EEF9",
+                    fontFamily: "JetBrains Mono, monospace",
+                  }}
+                  labelStyle={{
+                    color: "#E8EEF9",
+                    fontFamily: "Inter, sans-serif",
+                    fontWeight: 600,
+                    marginBottom: 4,
+                  }}
+                  itemStyle={{ color: MUTED }}
+                  formatter={(v: number) => [signedPct(v), "uplift"]}
+                />
+                <Bar dataKey="value" radius={[0, 6, 6, 0]} isAnimationActive={!reduce} data-testid="event-bar">
+                  {rows.map((r) => (
+                    <Cell key={r.name} fill={barColor(r.value)} data-testid={`bar-${r.name}`} />
+                  ))}
+                  <LabelList
+                    dataKey="value"
+                    position="right"
+                    formatter={(v: number) => signedPct(v)}
+                    style={{ fill: "#E8EEF9", fontFamily: "JetBrains Mono, monospace", fontSize: 12 }}
+                  />
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       )}
 
@@ -177,9 +190,6 @@ function EventImpactContent({ result }: { result: ForecastResult }) {
           Showing top {shownCount} of {totalEvents}
         </p>
       )}
-
-      {/* Horizon strip — events_in_horizon timeline (tests: horizon-strip / horizon-event) */}
-      <HorizonStrip result={result} />
 
       {/* Drawer */}
       {drawerOpen && (
@@ -420,107 +430,6 @@ function AllEventsDrawer({ rows, onClose }: AllEventsDrawerProps) {
           </p>
         </div>
       </div>
-    </div>
-  );
-}
-
-// ── Horizon Strip ─────────────────────────────────────────────────────────────
-// Renders events_in_horizon as a compact timeline below the uplift chart.
-// Tests assert on: data-testid="horizon-strip", data-testid="horizon-event",
-// and the empty-state text "No events in this 28-day window."
-function HorizonStrip({ result }: { result: ForecastResult }) {
-  const { events_in_horizon, horizon_dates } = result;
-
-  // Only show events whose date falls within the 28-day horizon
-  const horizonDateSet = useMemo(
-    () => new Set(horizon_dates ?? []),
-    [horizon_dates],
-  );
-
-  const inRangeEvents = useMemo(
-    () => (events_in_horizon ?? []).filter((e) => horizonDateSet.has(e.date)),
-    [events_in_horizon, horizonDateSet],
-  );
-
-  const firstDate = horizon_dates?.[0] ?? "";
-  const lastDate = horizon_dates?.[horizon_dates.length - 1] ?? "";
-
-  return (
-    <div
-      data-testid="horizon-strip"
-      style={{
-        marginTop: 8,
-        padding: "8px 10px",
-        borderRadius: 8,
-        border: "1px solid rgba(120,160,255,0.10)",
-        background: "rgba(120,160,255,0.04)",
-        fontFamily: "Inter, sans-serif",
-      }}
-    >
-      {/* Date range caption */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          fontSize: 10,
-          color: MUTED,
-          fontFamily: "JetBrains Mono, monospace",
-          marginBottom: inRangeEvents.length > 0 ? 6 : 0,
-        }}
-      >
-        <span>{firstDate}</span>
-        <span>{lastDate}</span>
-      </div>
-
-      {/* Events or empty state */}
-      {inRangeEvents.length === 0 ? (
-        <p
-          style={{
-            fontSize: 11,
-            color: MUTED,
-            fontFamily: "Inter, sans-serif",
-            margin: 0,
-            textAlign: "center",
-          }}
-        >
-          No events in this 28-day window.
-        </p>
-      ) : (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-          {inRangeEvents.map((e) => (
-            <span
-              key={`${e.date}-${e.name}`}
-              data-testid="horizon-event"
-              title={`${e.name} · ${e.date} · ${e.type}`}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 4,
-                fontSize: 11,
-                color: "#E8EEF9",
-                background: "rgba(77,255,176,0.10)",
-                border: "1px solid rgba(77,255,176,0.25)",
-                borderRadius: 9999,
-                padding: "2px 8px",
-                fontFamily: "Inter, sans-serif",
-                whiteSpace: "nowrap",
-              }}
-            >
-              <span
-                style={{
-                  display: "inline-block",
-                  width: 6,
-                  height: 6,
-                  borderRadius: "50%",
-                  background: LIME,
-                  flexShrink: 0,
-                }}
-              />
-              {e.name}
-            </span>
-          ))}
-        </div>
-      )}
     </div>
   );
 }
