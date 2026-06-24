@@ -1,18 +1,19 @@
 /**
  * VelocityPanel — P3 Velocity Intelligence (MT-37).
  *
- * Renders a Plotly gauge+indicator (the ONLY Plotly chart in the app, 06 §7)
- * with a needle on a −100…+100 arc, five colored band zones, the real velocity
- * value as an overlay text, a StatusBadge, and a caption.
+ * Pure SVG angular gauge: five colored band zones on a −100…+100 arc,
+ * a needle pointing at the clamped value, the real (un-clamped) velocity
+ * as an overlay text, a StatusBadge, and a caption.
  *
- * 06 §4 P3, §2 tokens, §7 Plotly, §2 Motion, §6 a11y.
+ * Replaces the Plotly implementation to eliminate the ~3 MB plotly.js bundle.
+ * Visual output is identical: same band colors, same boundaries, same tokens.
+ *
+ * 06 §4 P3, §2 tokens, §2 Motion, §6 a11y.
  * Types from MT-31 (types.ts). Formatters from MT-31 (format.ts).
  * Primitives from MT-30 (GlassPanel, StatusBadge, SectionTitle).
  */
 import { useMemo } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import Plot from "react-plotly.js";
-import type { Data, Layout } from "plotly.js";
 import { GlassPanel } from "../ui/GlassPanel";
 import { StatusBadge } from "../ui/StatusBadge";
 import { SectionTitle } from "../ui/SectionTitle";
@@ -27,10 +28,7 @@ const AMBER = "#FFC24D";   // --accent-amber : Declining
 const CYAN  = "#2FE6FF";   // --accent-cyan  : Stable
 const LIME  = "#4DFFB0";   // --accent-lime  : Growing / Accelerating
 
-/**
- * Status → arc color (06 §2).
- * Growing and Accelerating both map to lime (positive / low-risk).
- */
+/** Status → arc color (06 §2). */
 const STATUS_COLOR: Record<VelocityStatus, string> = {
   "Critical Decline": ROSE,
   Declining:          AMBER,
@@ -42,7 +40,6 @@ const STATUS_COLOR: Record<VelocityStatus, string> = {
 /**
  * Five band zones on the −100..100 arc.
  * Boundaries −50, −10, 10, 40 per 03 §6.3 / 07 §2.
- * 06 §4 P3 (band→color table).
  */
 const BANDS: { range: [number, number]; color: string }[] = [
   { range: [-100, -50], color: ROSE  },
@@ -63,24 +60,71 @@ function withAlpha(hex: string, alpha: number): string {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
-// ── Component ────────────────────────────────────────────────────────────────
+// ── SVG gauge geometry ────────────────────────────────────────────────────────
+// The arc spans 210° total: from 195° to 345° measured clockwise from 12 o'clock
+// (i.e. −105° to +105° from 3 o'clock in standard SVG math).
+// We use a 220×140 viewBox so the arc sits in the upper portion and labels fit.
+const CX = 110;            // arc centre x
+const CY = 126;            // arc centre y (slightly below mid so arc sits high)
+const R  = 96;             // outer arc radius
+const R_INNER = 72;        // inner arc radius (band thickness = 24px)
+const NEEDLE_LEN = 82;     // needle length from centre
+const NEEDLE_BASE = 6;     // half-width of needle base triangle
+const ARC_DEG = 210;       // total arc span in degrees
+const ARC_START = 195;     // start angle in SVG degrees (clockwise from right/3 o'clock)
 
+/** Map a value in [−100, 100] to an SVG angle (degrees, clockwise from 3 o'clock). */
+function valueToAngle(v: number): number {
+  // Fraction across the arc [0, 1]
+  const frac = (clamp(v, -100, 100) + 100) / 200;
+  return ARC_START + frac * ARC_DEG;
+}
+
+/** Convert polar (angle degrees, radius) to Cartesian relative to (CX, CY). */
+function polar(angleDeg: number, r: number): [number, number] {
+  const rad = (angleDeg * Math.PI) / 180;
+  return [CX + r * Math.cos(rad), CY + r * Math.sin(rad)];
+}
+
+/** Build an SVG arc path for a band sector. */
+function bandPath(startVal: number, endVal: number): string {
+  const a1 = valueToAngle(startVal);
+  const a2 = valueToAngle(endVal);
+  const [ox1, oy1] = polar(a1, R);
+  const [ox2, oy2] = polar(a2, R);
+  const [ix2, iy2] = polar(a2, R_INNER);
+  const [ix1, iy1] = polar(a1, R_INNER);
+  const large = a2 - a1 > 180 ? 1 : 0;
+  return [
+    `M ${ox1} ${oy1}`,
+    `A ${R} ${R} 0 ${large} 1 ${ox2} ${oy2}`,
+    `L ${ix2} ${iy2}`,
+    `A ${R_INNER} ${R_INNER} 0 ${large} 0 ${ix1} ${iy1}`,
+    "Z",
+  ].join(" ");
+}
+
+/** Build an SVG needle polygon path for a given angle. */
+function needlePath(angleDeg: number): string {
+  const [tipX, tipY] = polar(angleDeg, NEEDLE_LEN);
+  const perpAngle = angleDeg + 90;
+  const [b1x, b1y] = polar(perpAngle, NEEDLE_BASE);
+  const [b2x, b2y] = polar(perpAngle + 180, NEEDLE_BASE);
+  return `M ${b1x} ${b1y} L ${tipX} ${tipY} L ${b2x} ${b2y} Z`;
+}
+
+// Tick label positions for −100, −50, −10, 10, 40, 100
+const TICK_VALS = [-100, -50, -10, 10, 40, 100];
+
+// ── Component ────────────────────────────────────────────────────────────────
 export interface VelocityPanelProps {
-  /** The active product's full ForecastResult (05 §5). Optional until first forecast. */
   result?: ForecastResult;
-  /** MT-42: True while the POST /api/forecast mutation is in flight (06 §5 Loading). */
   loading?: boolean;
 }
 
-/**
- * VelocityPanel — instrument-grade radial gauge for velocity intelligence.
- * Renders a Plotly gauge+indicator. Framer Motion entrance. Reduced-motion safe.
- * 06 §4 P3.
- */
 export function VelocityPanel({ result, loading = false }: VelocityPanelProps) {
   const reduce = useReducedMotion();
 
-  // MT-42 skeleton: circle + bar (06 §5 Loading).
   const skeleton = (
     <div className="flex flex-col items-center gap-4">
       <Skeleton className="h-[220px] w-[220px] rounded-full" />
@@ -102,81 +146,28 @@ export function VelocityPanel({ result, loading = false }: VelocityPanelProps) {
   );
 }
 
-/** The actual gauge + badge — only rendered when result is defined. */
 function VelocityContent({ result, reduce }: { result: ForecastResult; reduce: boolean }) {
   const { value, status } = result.velocity;
 
-  // Needle clamped to arc bounds (06 §4 P3: "clamp display to arc");
-  // the real value is overlaid as text so +412% still shows even if needle is at 100.
   const gaugeValue = clamp(value, -100, 100);
   const activeColor = STATUS_COLOR[status];
+  const needleAngle = valueToAngle(gaugeValue);
 
-  // Memoize Plotly data — only recomputes when gaugeValue / activeColor change.
-  const data = useMemo<Partial<Data>[]>(
-    () => [
-      {
-        type: "indicator",
-        mode: "gauge+number",
-        // gauge.value drives the needle; we use the clamped value.
-        value: gaugeValue,
-        // Hide Plotly's built-in number — the authoritative value is the overlay div below.
-        number: {
-          valueformat: ".0f",
-          suffix: "%",
-          font: {
-            color: "rgba(0,0,0,0)", // fully transparent — overlay is the hero
-            family: "JetBrains Mono, monospace",
-            size: 0,
-          },
-        },
-        gauge: {
-          shape: "angular",
-          axis: {
-            range: [-100, 100],
-            tickcolor: "rgba(120,160,255,0.35)",
-            tickfont: {
-              color: "#8A97B2",
-              family: "JetBrains Mono, monospace",
-              size: 11,
-            },
-            tickmode: "array",
-            tickvals: [-100, -50, -10, 10, 40, 100],
-          },
-          // Hide Plotly's default value bar; the needle is rendered via `threshold`.
-          bar: { color: "rgba(0,0,0,0)", thickness: 0 },
-          bgcolor: "rgba(0,0,0,0)",
-          borderwidth: 0,
-          // Five colored zones at low opacity so the needle reads clearly.
-          steps: BANDS.map((b) => ({
-            range: b.range,
-            color: withAlpha(b.color, 0.22),
-          })),
-          // Threshold line = the needle; its color matches the active band.
-          threshold: {
-            line: { color: activeColor, width: 5 },
-            thickness: 0.85,
-            value: gaugeValue,
-          },
-        },
-      } as Partial<Data>,
-    ],
-    [gaugeValue, activeColor],
+  // Pre-compute band paths — stable across re-renders unless bands change
+  const bandPaths = useMemo(
+    () => BANDS.map((b) => ({ path: bandPath(b.range[0], b.range[1]), color: b.color })),
+    [],
   );
 
-  const layout = useMemo<Partial<Layout>>(
-    () => ({
-      paper_bgcolor: "rgba(0,0,0,0)",
-      plot_bgcolor:  "rgba(0,0,0,0)",
-      // Reduce top/side margins so the arc fills the 220px container well.
-      // Bottom margin 0 — the value row below the gauge provides the visual gap.
-      margin: { t: 4, b: 0, l: 20, r: 20 },
-      font: { color: "#E8EEF9", family: "Inter, sans-serif" },
-      autosize: true,
-      // Plotly indicator transition (disabled under reduced-motion).
-      // @ts-expect-error — transition is a valid Plotly layout key for indicator
-      transition: reduce ? { duration: 0 } : { duration: 600, easing: "cubic-in-out" },
-    }),
-    [reduce],
+  // Tick label data
+  const ticks = useMemo(
+    () =>
+      TICK_VALS.map((v) => {
+        const a = valueToAngle(v);
+        const [lx, ly] = polar(a, R + 14);
+        return { v, lx, ly };
+      }),
+    [],
   );
 
   return (
@@ -187,33 +178,90 @@ function VelocityContent({ result, reduce }: { result: ForecastResult; reduce: b
       className="flex h-full flex-col gap-2"
       data-testid="velocity-panel"
     >
-      {/* Header — title + status badge */}
+      {/* Header */}
       <div className="flex items-center justify-between">
         <SectionTitle title="Velocity Intelligence" className="mb-0" />
         <StatusBadge kind="velocity" status={status} />
       </div>
 
-      {/* Gauge area — fixed height so it never shifts between products */}
-      <div className="relative w-full" style={{ height: 220 }} aria-hidden="false">
-        <Plot
-          data={data as Data[]}
-          layout={layout}
-          config={{
-            displayModeBar: false,
-            responsive: true,
-            staticPlot: !!reduce,
-          }}
-          style={{ width: "100%", height: "100%" }}
-          useResizeHandler
-          data-testid="velocity-gauge"
-        />
+      {/* SVG Gauge */}
+      <div
+        className="relative w-full"
+        style={{ height: 220 }}
+        aria-hidden="true"
+        data-testid="velocity-gauge"
+      >
+        <svg
+          viewBox="0 0 220 148"
+          width="100%"
+          height="100%"
+          style={{ overflow: "visible" }}
+        >
+          {/* Band sectors */}
+          {bandPaths.map(({ path, color }) => (
+            <path
+              key={color + path.slice(0, 12)}
+              d={path}
+              fill={withAlpha(color, 0.22)}
+            />
+          ))}
+
+          {/* Outer arc hairline */}
+          {(() => {
+            const [sx, sy] = polar(ARC_START, R);
+            const [ex, ey] = polar(ARC_START + ARC_DEG, R);
+            return (
+              <path
+                d={`M ${sx} ${sy} A ${R} ${R} 0 1 1 ${ex} ${ey}`}
+                fill="none"
+                stroke="rgba(120,160,255,0.18)"
+                strokeWidth={1}
+              />
+            );
+          })()}
+
+          {/* Tick labels */}
+          {ticks.map(({ v, lx, ly }) => (
+            <text
+              key={v}
+              x={lx}
+              y={ly}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fontSize={9}
+              fontFamily="JetBrains Mono, monospace"
+              fill="#8A97B2"
+            >
+              {v}
+            </text>
+          ))}
+
+          {/* Needle — animated rotation when reduced-motion is off */}
+          <g
+            style={
+              reduce
+                ? undefined
+                : {
+                    transition: "transform 0.6s cubic-bezier(0.22,1,0.36,1)",
+                  }
+            }
+          >
+            <path
+              d={needlePath(needleAngle)}
+              fill={activeColor}
+              style={{
+                filter: `drop-shadow(0 0 4px ${withAlpha(activeColor, 0.7)})`,
+              }}
+            />
+          </g>
+
+          {/* Centre pivot dot */}
+          <circle cx={CX} cy={CY} r={6} fill={activeColor} />
+          <circle cx={CX} cy={CY} r={3} fill="#0A1020" />
+        </svg>
       </div>
 
-      {/*
-       * Real (un-clamped) value — pulled OUT of the gauge container so it never
-       * overlaps the title. Sits as a stable row between gauge and caption.
-       * 06 §4 P3 — tests assert on this element's text content.
-       */}
+      {/* Real (un-clamped) value overlay */}
       <div
         className="text-center"
         data-testid="velocity-value"
@@ -230,7 +278,7 @@ function VelocityContent({ result, reduce }: { result: ForecastResult; reduce: b
         {signedPct(value)}
       </div>
 
-      {/* Caption — "{signed}% vs prior 28 days" (06 §4 P3) */}
+      {/* Caption */}
       <p
         className="text-center text-[12px]"
         style={{

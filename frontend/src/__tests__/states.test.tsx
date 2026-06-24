@@ -32,9 +32,12 @@ vi.mock("recharts", () => {
     ResponsiveContainer: Pass,
     LineChart: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
     Line: (props: { "data-testid"?: string }) => (
-      <div data-testid={props["data-testid"] ?? "stock-line"} />
+      <div data-testid={props["data-testid"]} />
     ),
     ReferenceLine: (props: { "data-testid"?: string }) => (
+      <div data-testid={props["data-testid"]} />
+    ),
+    ReferenceDot: (props: { "data-testid"?: string }) => (
       <div data-testid={props["data-testid"]} />
     ),
     XAxis: Pass,

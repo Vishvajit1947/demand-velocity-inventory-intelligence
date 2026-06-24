@@ -178,6 +178,9 @@ function EventImpactContent({ result }: { result: ForecastResult }) {
         </p>
       )}
 
+      {/* Horizon strip — events_in_horizon timeline (tests: horizon-strip / horizon-event) */}
+      <HorizonStrip result={result} />
+
       {/* Drawer */}
       {drawerOpen && (
         <AllEventsDrawer
@@ -417,6 +420,107 @@ function AllEventsDrawer({ rows, onClose }: AllEventsDrawerProps) {
           </p>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ── Horizon Strip ─────────────────────────────────────────────────────────────
+// Renders events_in_horizon as a compact timeline below the uplift chart.
+// Tests assert on: data-testid="horizon-strip", data-testid="horizon-event",
+// and the empty-state text "No events in this 28-day window."
+function HorizonStrip({ result }: { result: ForecastResult }) {
+  const { events_in_horizon, horizon_dates } = result;
+
+  // Only show events whose date falls within the 28-day horizon
+  const horizonDateSet = useMemo(
+    () => new Set(horizon_dates ?? []),
+    [horizon_dates],
+  );
+
+  const inRangeEvents = useMemo(
+    () => (events_in_horizon ?? []).filter((e) => horizonDateSet.has(e.date)),
+    [events_in_horizon, horizonDateSet],
+  );
+
+  const firstDate = horizon_dates?.[0] ?? "";
+  const lastDate = horizon_dates?.[horizon_dates.length - 1] ?? "";
+
+  return (
+    <div
+      data-testid="horizon-strip"
+      style={{
+        marginTop: 8,
+        padding: "8px 10px",
+        borderRadius: 8,
+        border: "1px solid rgba(120,160,255,0.10)",
+        background: "rgba(120,160,255,0.04)",
+        fontFamily: "Inter, sans-serif",
+      }}
+    >
+      {/* Date range caption */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          fontSize: 10,
+          color: MUTED,
+          fontFamily: "JetBrains Mono, monospace",
+          marginBottom: inRangeEvents.length > 0 ? 6 : 0,
+        }}
+      >
+        <span>{firstDate}</span>
+        <span>{lastDate}</span>
+      </div>
+
+      {/* Events or empty state */}
+      {inRangeEvents.length === 0 ? (
+        <p
+          style={{
+            fontSize: 11,
+            color: MUTED,
+            fontFamily: "Inter, sans-serif",
+            margin: 0,
+            textAlign: "center",
+          }}
+        >
+          No events in this 28-day window.
+        </p>
+      ) : (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {inRangeEvents.map((e) => (
+            <span
+              key={`${e.date}-${e.name}`}
+              data-testid="horizon-event"
+              title={`${e.name} · ${e.date} · ${e.type}`}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 4,
+                fontSize: 11,
+                color: "#E8EEF9",
+                background: "rgba(77,255,176,0.10)",
+                border: "1px solid rgba(77,255,176,0.25)",
+                borderRadius: 9999,
+                padding: "2px 8px",
+                fontFamily: "Inter, sans-serif",
+                whiteSpace: "nowrap",
+              }}
+            >
+              <span
+                style={{
+                  display: "inline-block",
+                  width: 6,
+                  height: 6,
+                  borderRadius: "50%",
+                  background: LIME,
+                  flexShrink: 0,
+                }}
+              />
+              {e.name}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

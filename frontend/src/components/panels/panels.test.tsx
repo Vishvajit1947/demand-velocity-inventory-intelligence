@@ -49,6 +49,9 @@ vi.mock("recharts", () => {
     ),
     LabelList: () => null,
     ReferenceArea: () => null,
+    ReferenceDot: (props: { "data-testid"?: string }) => (
+      <div data-testid={props["data-testid"]} />
+    ),
   };
 });
 

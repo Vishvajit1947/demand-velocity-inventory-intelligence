@@ -154,6 +154,8 @@ describe("ForecastControlBar (MT-33)", () => {
   // Select all selects all available products in API order
   it("Select all calls onChange with all product series_ids in API order", () => {
     const { onProductsChange } = setup({ selectedIds: [] });
+    // Open the dropdown — trigger button text is "Select products…" when nothing selected
+    fireEvent.click(screen.getByText(/select products/i));
     fireEvent.click(screen.getByText(/select all/i));
     expect(onProductsChange).toHaveBeenCalledWith(["turkey", "candy", "milk"]);
   });
@@ -161,22 +163,28 @@ describe("ForecastControlBar (MT-33)", () => {
   // Clear empties the selection
   it("Clear calls onChange with an empty array", () => {
     const { onProductsChange } = setup({ selectedIds: ["turkey"] });
+    // Open the dropdown — trigger button text is "1 / 3 products" when one selected
+    fireEvent.click(screen.getByText(/1 \/ 3 products/i));
     fireEvent.click(screen.getByText(/clear/i));
     expect(onProductsChange).toHaveBeenCalledWith([]);
   });
 
-  // Individual chip toggle adds / removes a product
+  // Individual option toggle adds / removes a product
   it("clicking a chip toggles it into selectedIds", () => {
     const { onProductsChange } = setup({ selectedIds: [] });
-    // Click the "Candy" chip
-    fireEvent.click(screen.getByRole("checkbox", { name: /candy/i }));
+    // Open the dropdown
+    fireEvent.click(screen.getByText(/select products/i));
+    // Click the "Candy" option (role="option" in listbox)
+    fireEvent.click(screen.getByRole("option", { name: /candy/i }));
     expect(onProductsChange).toHaveBeenCalledWith(["candy"]);
   });
 
   it("clicking an already-active chip removes it from selectedIds", () => {
     const { onProductsChange } = setup({ selectedIds: ["turkey", "candy"] });
-    // Click the "Candy" chip to deselect it
-    fireEvent.click(screen.getByRole("checkbox", { name: /candy/i }));
+    // Open the dropdown — "2 / 3 products" when two selected
+    fireEvent.click(screen.getByText(/2 \/ 3 products/i));
+    // Click the "Candy" option to deselect it
+    fireEvent.click(screen.getByRole("option", { name: /candy/i }));
     expect(onProductsChange).toHaveBeenCalledWith(["turkey"]);
   });
 

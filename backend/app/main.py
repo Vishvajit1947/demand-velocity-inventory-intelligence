@@ -8,6 +8,7 @@ the locked 05 §7 shape. Run from backend/:
 from __future__ import annotations
 
 import logging
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
@@ -23,8 +24,20 @@ from app.services.store import get_store
 
 logger = logging.getLogger("demand_velocity")
 
-# Vite dev server origin — the only allowed CORS origin (05 intro, 04 §3)
-ALLOWED_ORIGIN = "http://localhost:5173"
+
+def _get_cors_origins() -> list[str]:
+    """
+    Read allowed CORS origins from the environment variable CORS_ORIGINS.
+
+    The variable accepts a comma-separated list of origins, e.g.:
+      CORS_ORIGINS=http://localhost:5173
+      CORS_ORIGINS=https://your-app.vercel.app,https://staging.your-app.vercel.app
+
+    Falls back to the local Vite dev-server origin when the variable is not set,
+    so local development works without any extra configuration.
+    """
+    raw = os.getenv("CORS_ORIGINS", "http://localhost:5173")
+    return [origin.strip() for origin in raw.split(",") if origin.strip()]
 
 
 @asynccontextmanager
@@ -53,10 +66,10 @@ def _field_from_request_validation(exc: RequestValidationError) -> str | None:
 def create_app() -> FastAPI:
     app = FastAPI(title="Demand Velocity & Inventory Intelligence", lifespan=lifespan)
 
-    # CORS — allow the Vite dev server (05 intro, 04 §3)
+    # CORS — origins read from CORS_ORIGINS env var (falls back to localhost:5173)
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=[ALLOWED_ORIGIN],
+        allow_origins=_get_cors_origins(),
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

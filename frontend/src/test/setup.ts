@@ -1,6 +1,6 @@
 // MT-44 — global Vitest setup: jest-dom matchers + jsdom shims (07 §3).
 import "@testing-library/jest-dom/vitest";
-import { afterEach, vi } from "vitest";
+import { afterEach } from "vitest";
 import { cleanup } from "@testing-library/react";
 
 // Unmount React trees between tests (RTL hygiene).
@@ -32,13 +32,6 @@ if (!window.ResizeObserver) {
   };
 }
 
-// Give elements a non-zero box so Recharts/Plotly size queries don't return 0.
+// Give elements a non-zero box so Recharts size queries don't return 0.
 Object.defineProperty(HTMLElement.prototype, "offsetWidth", { configurable: true, value: 800 });
 Object.defineProperty(HTMLElement.prototype, "offsetHeight", { configurable: true, value: 400 });
-
-// Plotly does not render in jsdom — globally mock react-plotly.js so VelocityPanel
-// (the only Plotly consumer, MT-37) renders its text content without a canvas crash.
-// Per-file tests that need to inspect Plot props override this mock locally.
-vi.mock("react-plotly.js", () => ({
-  default: () => null,
-}));

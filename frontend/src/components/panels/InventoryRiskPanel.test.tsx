@@ -24,10 +24,14 @@ vi.mock("recharts", () => {
     LineChart: ({ children }: { children?: React.ReactNode }) => (
       <div data-testid="linechart">{children}</div>
     ),
+    // Forward data-testid exactly — component uses "stock-line-safe" and "stock-line-danger"
     Line: (props: { "data-testid"?: string }) => (
-      <div data-testid={props["data-testid"] ?? "stock-line"} />
+      <div data-testid={props["data-testid"]} />
     ),
     ReferenceLine: (props: { "data-testid"?: string }) => (
+      <div data-testid={props["data-testid"]} />
+    ),
+    ReferenceDot: (props: { "data-testid"?: string }) => (
       <div data-testid={props["data-testid"]} />
     ),
     XAxis: Pass,
@@ -56,7 +60,6 @@ function makeResult(
     forecast: Array.from({ length: 28 }, () => 11),
     metrics: {
       accuracy: 78.4,
-      wape: 21.6,
       coherence: 71.0,
       coherence_label: "Moderate",
       smape: 24.1,
@@ -107,7 +110,7 @@ describe("InventoryRiskPanel", () => {
 
   it("renders the projected stock line and a safety-stock reference line", () => {
     render(<InventoryRiskPanel result={makeResult()} />);
-    expect(screen.getByTestId("stock-line")).toBeInTheDocument();
+    expect(screen.getByTestId("stock-line-safe")).toBeInTheDocument();
     expect(screen.getByTestId("safety-ref")).toBeInTheDocument();
   });
 
@@ -135,8 +138,8 @@ describe("InventoryRiskPanel", () => {
     render(<InventoryRiskPanel result={makeResult()} />);
     expect(screen.getByTestId("reorder-card")).toBeInTheDocument();
     expect(screen.getByText("On hand")).toBeInTheDocument();
-    expect(screen.getByText("Reorder point")).toBeInTheDocument();
-    expect(screen.getByText("28-day demand")).toBeInTheDocument();
+    expect(screen.getByText("Reorder pt")).toBeInTheDocument();
+    expect(screen.getByText("28d demand")).toBeInTheDocument();
     expect(
       screen.getByText("Simulated reorder model — illustrative."),
     ).toBeInTheDocument();
