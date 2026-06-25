@@ -5,10 +5,7 @@ artifact load (04 §3) is visible without crashing the process. Must never raise
 """
 from __future__ import annotations
 
-import os
-
 from fastapi import APIRouter
-from fastapi.responses import JSONResponse
 
 from app import config
 from app.schemas.contracts import HealthResponse
@@ -25,9 +22,3 @@ def get_health() -> HealthResponse:
         model_loaded=get_store().model_loaded,
         version=config.VERSION,
     )
-
-
-@router.get("/health/debug")
-def get_health_debug():
-    """Temporary: check what CORS_ORIGINS env var the running container sees."""
-    return JSONResponse({"cors_origins": os.getenv("CORS_ORIGINS", "NOT SET")})
