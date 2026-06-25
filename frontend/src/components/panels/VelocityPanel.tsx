@@ -31,16 +31,6 @@ const DARK_GRN  = "#145B4A";   //  40  to 100  : Accelerating
 
 const NEEDLE_COLOR = "#00F0B5"; // mint green needle
 
-/** Status → accent color (kept for external consumers / future use). */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const _STATUS_COLOR: Record<VelocityStatus, string> = {
-  "Critical Decline": MAROON,
-  Declining:          BROWN,
-  Stable:             DEEP_TEAL,
-  Growing:            NEEDLE_COLOR,
-  Accelerating:       NEEDLE_COLOR,
-};
-
 /**
  * Five band zones on the −100..100 arc.
  * Boundaries −50, −10, 10, 40 per 03 §6.3 / 07 §2.
