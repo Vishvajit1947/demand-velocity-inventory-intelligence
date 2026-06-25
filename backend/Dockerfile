@@ -22,7 +22,12 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /app/backend
 
-# 1) Install dependencies first (better layer caching)
+# 1) Install system dependencies required by LightGBM (libgomp = OpenMP runtime)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# 2) Install Python dependencies (better layer caching)
 COPY backend/requirements.txt ./requirements.txt
 RUN pip install --upgrade pip && pip install -r requirements.txt
 
