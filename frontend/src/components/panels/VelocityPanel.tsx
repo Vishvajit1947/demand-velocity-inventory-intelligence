@@ -20,7 +20,7 @@ import { SectionTitle } from "../ui/SectionTitle";
 import { Skeleton } from "../ui/Skeleton";
 import { PanelState } from "../ui/PanelState";
 import { signedPct } from "../../lib/format";
-import type { ForecastResult, VelocityStatus } from "../../lib/types";
+import type { ForecastResult } from "../../lib/types";
 
 // ── Band colors — reference image exact values ────────────────────────────────
 const MAROON    = "#7A2E3F";   // −100 to −50  : Critical Decline
