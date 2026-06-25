@@ -33,7 +33,7 @@ const NEEDLE_COLOR = "#00F0B5"; // mint green needle
 
 /** Status → accent color (kept for external consumers / future use). */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-const STATUS_COLOR: Record<VelocityStatus, string> = {
+const _STATUS_COLOR: Record<VelocityStatus, string> = {
   "Critical Decline": MAROON,
   Declining:          BROWN,
   Stable:             DEEP_TEAL,
