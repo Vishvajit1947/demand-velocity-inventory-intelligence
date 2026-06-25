@@ -6,7 +6,6 @@ artifact load (04 §3) is visible without crashing the process. Must never raise
 from __future__ import annotations
 
 from fastapi import APIRouter
-from fastapi.responses import JSONResponse
 
 from app import config
 from app.schemas.contracts import HealthResponse
@@ -25,16 +24,4 @@ def get_health() -> HealthResponse:
     )
 
 
-@router.get("/health/debug")
-def get_health_debug():
-    """Temporary debug endpoint — shows artifact load errors and resolved paths."""
-    import os
-    store = get_store()
-    return JSONResponse({
-        "model_loaded": store.model_loaded,
-        "load_errors": store.load_errors,
-        "resolved_paths": {k: str(v) for k, v in config.PATHS.items()},
-        "paths_exist": {k: os.path.exists(str(v)) for k, v in config.PATHS.items()},
-        "repo_root": str(config.REPO_ROOT),
-        "cwd": os.getcwd(),
-    })
+
