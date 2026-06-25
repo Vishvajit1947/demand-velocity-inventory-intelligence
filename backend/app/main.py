@@ -36,7 +36,8 @@ def _get_cors_origins() -> list[str]:
     Falls back to the local Vite dev-server origin when the variable is not set,
     so local development works without any extra configuration.
     """
-    raw = os.getenv("CORS_ORIGINS", "http://localhost:5173")
+    default = "http://localhost:5173,https://demand-velocity-inventory-intellige.vercel.app"
+    raw = os.getenv("CORS_ORIGINS", default)
     return [origin.strip() for origin in raw.split(",") if origin.strip()]
 
 
