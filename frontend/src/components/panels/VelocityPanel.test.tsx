@@ -84,3 +84,45 @@ describe("VelocityPanel (MT-37)", () => {
     expect(screen.getByText("Velocity Intelligence")).toBeInTheDocument();
   });
 });
+
+// ── Status color tests ───────────────────────────────────────────────────────
+// Browsers normalize hex colors to rgb/rgba in inline styles, so we assert
+// on the rgb() representation of each hex rather than the hex string itself.
+function hexToRgba(hex: string, alpha: number): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+describe("VelocityPanel status-aware colors (MT-37 color update)", () => {
+  const cases: Array<{
+    status: ForecastResult["velocity"]["status"];
+    value: number;
+    hex: string;
+    glowAlpha: number;
+  }> = [
+    { status: "Critical Decline", value: -72, hex: "#FF5C7A", glowAlpha: 0.45 },
+    { status: "Declining",        value: -30, hex: "#FFC24D", glowAlpha: 0.45 },
+    { status: "Stable",           value:   0, hex: "#2FE6FF", glowAlpha: 0.45 },
+    { status: "Growing",          value:  25, hex: "#4DFFB0", glowAlpha: 0.45 },
+    { status: "Accelerating",     value: 412, hex: "#4DFFB0", glowAlpha: 0.60 },
+  ];
+
+  cases.forEach(({ status, value, hex, glowAlpha }) => {
+    it(`${status} → value overlay color is ${hex}`, () => {
+      render(<VelocityPanel result={makeResult(value, status)} />);
+      const overlay = screen.getByTestId("velocity-value");
+      // haveStyle resolves hex → rgb automatically
+      expect(overlay).toHaveStyle({ color: hex });
+    });
+
+    it(`${status} → value overlay textShadow contains glow rgba(alpha=${glowAlpha})`, () => {
+      render(<VelocityPanel result={makeResult(value, status)} />);
+      const overlay = screen.getByTestId("velocity-value");
+      const style = overlay.getAttribute("style") ?? "";
+      // Inline style string contains the rgba representation produced by withAlpha()
+      expect(style).toContain(hexToRgba(hex, glowAlpha));
+    });
+  });
+});

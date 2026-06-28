@@ -29,7 +29,18 @@ const DEEP_TEAL = "#144E5A";   // −10  to  10  : Stable
 const TEAL_GRN  = "#1F6B5B";   //  10  to  40  : Growing
 const DARK_GRN  = "#145B4A";   //  40  to 100  : Accelerating
 
-const NEEDLE_COLOR = "#00F0B5"; // mint green needle
+// ── Status-aware indicator colors ────────────────────────────────────────────
+// Maps each VelocityStatus to { hex, glowAlpha } for needle, hub, glow, and value text.
+const STATUS_COLORS: Record<
+  ForecastResult["velocity"]["status"],
+  { hex: string; glowAlpha: number }
+> = {
+  "Critical Decline": { hex: "#FF5C7A", glowAlpha: 0.45 },
+  "Declining":        { hex: "#FFC24D", glowAlpha: 0.45 },
+  "Stable":           { hex: "#2FE6FF", glowAlpha: 0.45 },
+  "Growing":          { hex: "#4DFFB0", glowAlpha: 0.45 },
+  "Accelerating":     { hex: "#4DFFB0", glowAlpha: 0.60 },
+} as const;
 
 /**
  * Five band zones on the −100..100 arc.
@@ -39,8 +50,8 @@ const BANDS: { range: [number, number]; color: string }[] = [
   { range: [-100, -50], color: MAROON    },
   { range: [-50,  -10], color: BROWN     },
   { range: [-10,   10], color: DEEP_TEAL },
-  { range: [10,    40], color: TEAL_GRN  },
-  { range: [40,   100], color: DARK_GRN  },
+  { range: [10,    50], color: TEAL_GRN  },
+  { range: [50,   100], color: DARK_GRN  },
 ];
 
 /** Clamp n into [lo, hi]. */
@@ -107,7 +118,7 @@ function needleLinePath(angleDeg: number): { x1: number; y1: number; x2: number;
 }
 
 // Tick label positions for −100, −50, −10, 10, 40, 100
-const TICK_VALS = [-100, -50, -10, 10, 40, 100];
+const TICK_VALS = [-100, -50, -10, 10, 50, 100];
 
 // ── Component ────────────────────────────────────────────────────────────────
 export interface VelocityPanelProps {
@@ -144,6 +155,9 @@ function VelocityContent({ result, reduce }: { result: ForecastResult; reduce: b
 
   const gaugeValue = clamp(value, -100, 100);
   const needleAngle = valueToAngle(gaugeValue);
+
+  // Single source-of-truth for status-driven indicator color
+  const { hex: statusHex, glowAlpha } = STATUS_COLORS[status];
 
   // Pre-compute band paths — stable across re-renders unless bands change
   const bandPaths = useMemo(
@@ -231,31 +245,31 @@ function VelocityContent({ result, reduce }: { result: ForecastResult; reduce: b
               y1={needle.y1}
               x2={needle.x2}
               y2={needle.y2}
-              stroke={NEEDLE_COLOR}
+              stroke={statusHex}
               strokeWidth={NEEDLE_WIDTH}
               strokeLinecap="round"
-              style={{ filter: `drop-shadow(0 0 5px ${withAlpha(NEEDLE_COLOR, 0.85)})` }}
+              style={{ filter: `drop-shadow(0 0 5px ${withAlpha(statusHex, 0.85)})` }}
             />
           </g>
 
-          {/* Centre pivot — mint green outer, dark inner */}
-          <circle cx={CX} cy={CY} r={7} fill={NEEDLE_COLOR} style={{ filter: `drop-shadow(0 0 6px ${withAlpha(NEEDLE_COLOR, 0.9)})` }} />
+          {/* Centre pivot — status-colored outer, dark inner */}
+          <circle cx={CX} cy={CY} r={7} fill={statusHex} style={{ filter: `drop-shadow(0 0 6px ${withAlpha(statusHex, 0.9)})` }} />
           <circle cx={CX} cy={CY} r={3.5} fill="#0A1020" />
         </svg>
       </div>
 
-      {/* Real (un-clamped) value overlay — always mint green like reference */}
+      {/* Real (un-clamped) value overlay — status-aware color */}
       <div
         className="text-center"
         data-testid="velocity-value"
         style={{
           fontFamily: "JetBrains Mono, monospace",
           fontVariantNumeric: "tabular-nums",
-          color: NEEDLE_COLOR,
+          color: statusHex,
           fontSize: 30,
           fontWeight: 600,
           lineHeight: 1,
-          textShadow: `0 0 18px ${withAlpha(NEEDLE_COLOR, 0.45)}`,
+          textShadow: `0 0 18px ${withAlpha(statusHex, glowAlpha)}`,
         }}
       >
         {signedPct(value)}
