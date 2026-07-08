@@ -8,5 +8,7 @@ lightgbm==4.5.0         # the committed model.pkl was trained with this version
 scikit-learn==1.6.0     # metrics helpers (pearsonr via scipy alternative ok)
 scipy==1.15.0
 python-dateutil==2.9.0
+slowapi==0.1.9          # per-IP rate limiting for FastAPI/Starlette
+limits==3.14.0          # slowapi dependency (in-memory backend)
 pytest==8.3.4           # dev/test
 httpx==0.28.1           # test client for FastAPI

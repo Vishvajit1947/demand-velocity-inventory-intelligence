@@ -15,10 +15,14 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 from app.api import forecast as forecast_api
 from app.api import health as health_api
 from app.api import products as products_api
+from app.limiter import limiter
 from app.services.forecast_service import ForecastValidationError
 from app.services.store import get_store
 
@@ -67,13 +71,30 @@ def _field_from_request_validation(exc: RequestValidationError) -> str | None:
 def create_app() -> FastAPI:
     app = FastAPI(title="Demand Velocity & Inventory Intelligence", lifespan=lifespan)
 
-    # CORS — origins read from CORS_ORIGINS env var (falls back to localhost:5173)
+    # Rate limiter state & middleware
+    app.state.limiter = limiter
+    app.add_middleware(SlowAPIMiddleware)
+
+    # Custom 429 handler — matches existing 05 §7 error shape
+    @app.exception_handler(RateLimitExceeded)
+    async def _on_rate_limit(request: Request, exc: RateLimitExceeded):
+        return JSONResponse(
+            status_code=429,
+            content={
+                "error": "rate_limit_exceeded",
+                "message": f"Too many requests. Limit: {exc.detail}. Please slow down and try again shortly.",
+                "field": None,
+            },
+            headers={"Retry-After": "60"},
+        )
+
+    # CORS — origins read from CORS_ORIGINS env var (falls back to explicit list)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=_get_cors_origins(),
         allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_headers=["Content-Type", "Authorization", "Accept"],
     )
 
     # routers under /api (04 §1, §4)

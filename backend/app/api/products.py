@@ -6,9 +6,10 @@ config.py (MT-01) + profiles via the store (MT-21). Shapes are locked in
 """
 from __future__ import annotations
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 
 from app import config
+from app.limiter import limiter
 from app.schemas.contracts import BoundsResponse, ProductInfo, ProductsResponse
 from app.services.store import get_store
 
@@ -16,7 +17,8 @@ router = APIRouter()
 
 
 @router.get("/products", response_model=ProductsResponse)
-def get_products() -> ProductsResponse:
+@limiter.limit("60/minute")
+def get_products(request: Request) -> ProductsResponse:
     """05 §3: the 8 products in SERIES_IDS order, with profile summary stats."""
     store = get_store()
     products: list[ProductInfo] = []
@@ -38,7 +40,8 @@ def get_products() -> ProductsResponse:
 
 
 @router.get("/calendar/bounds", response_model=BoundsResponse)
-def get_calendar_bounds() -> BoundsResponse:
+@limiter.limit("60/minute")
+def get_calendar_bounds(request: Request) -> BoundsResponse:
     """05 §4: selectable window + split metadata, derived from config constants."""
     store = get_store()
 
