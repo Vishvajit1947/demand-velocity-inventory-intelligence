@@ -88,17 +88,21 @@ class Store:
         """
         Actual `units` for `series_id` over inclusive d_index range [d_from, d_to],
         ordered by ascending d_index (02 §4). Returns the rows that exist (no padding).
+
+        Vectorized: filters by series_id once, then slices the d_index range with
+        numpy comparison — faster than a three-condition boolean mask on the full
+        DataFrame, especially under Railway's CPU throttling.
         """
         if self.series_daily is None:
             raise RuntimeError("series_daily not loaded; cannot read actual_units")
         df = self.series_daily
-        mask = (
-            (df["series_id"] == series_id)
-            & (df["d_index"] >= d_from)
-            & (df["d_index"] <= d_to)
-        )
-        sub = df.loc[mask, ["d_index", "units"]].sort_values("d_index")
-        return [float(u) for u in sub["units"].to_list()]
+        sid_mask = df["series_id"] == series_id
+        sub      = df.loc[sid_mask, ["d_index", "units"]]
+        d_arr    = sub["d_index"].to_numpy()
+        u_arr    = sub["units"].to_numpy()
+        keep     = (d_arr >= d_from) & (d_arr <= d_to)
+        # d_arr is already ascending (series_daily sorted at load time)
+        return [float(v) for v in u_arr[keep]]
 
     def d_to_date(self, d: int) -> "datetime.date":
         """

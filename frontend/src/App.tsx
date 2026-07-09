@@ -3,7 +3,7 @@
  * MT-42 edit: ToastProvider + ToastHost, EntranceList/EntranceItem panel grid,
  * all seven panels (MT-34…41) rendered and wrapped via PanelState.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ForecastControlBar } from "./components/controls/ForecastControlBar";
 import { useBounds, useForecastMutation, useProducts } from "./hooks/useForecast";
 import { ToastProvider } from "./components/ui/Toast";
@@ -42,8 +42,31 @@ export default function App() {
   // ── Forecast mutation (MT-31 useForecastMutation) ──────────────────────
   const forecast = useForecastMutation();
 
+  // Two-layer deduplication guard:
+  //
+  // 1. submittingRef (non-reactive) — flips synchronously on click, blocking
+  //    any re-entrant call within the same JS task before React re-renders.
+  //
+  // 2. isSubmitting (reactive state) — triggers an immediate re-render so the
+  //    Forecast button becomes disabled before useMutation's isPending catches
+  //    up (isPending updates after a microtask tick, leaving a ~16ms window
+  //    where rapid clicks bypass it).
+  //
+  // Together they guarantee exactly ONE in-flight request regardless of how
+  // quickly the user clicks or how React 18 concurrent mode schedules renders.
+  const submittingRef = useRef(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   function handleSubmit(payload: ForecastRequest) {
-    forecast.mutate(payload);
+    if (submittingRef.current) return;   // synchronous guard — drops re-entrant clicks
+    submittingRef.current = true;
+    setIsSubmitting(true);               // immediate re-render → button disabled
+    forecast.mutate(payload, {
+      onSettled: () => {
+        submittingRef.current = false;
+        setIsSubmitting(false);
+      },
+    });
   }
 
   const forecastData: ForecastResponse | undefined = forecast.data;
@@ -73,7 +96,7 @@ export default function App() {
     (p) => p.series_id === selectedResult?.series_id,
   )?.archetype;
 
-  const isPending = forecast.isPending;
+  const isPending = forecast.isPending || isSubmitting;
 
   return (
     <ToastProvider>

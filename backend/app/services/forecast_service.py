@@ -90,11 +90,17 @@ def _build_result(
     series_id: str,
     start_d: int,
     forecast: list[float],
-    forecast_no_event: list[float],     # pre-computed batched counterfactual
+    forecast_no_event: list[float],
     u_by_d: dict[int, float],
     p_by_d: dict[int, float],
+    cal_plain,                          # pre-reset calendar (passed in once per request)
 ) -> ForecastResult:
-    """Assemble one ForecastResult given pre-computed main + counterfactual forecasts."""
+    """Assemble one ForecastResult given pre-computed main + counterfactual forecasts.
+
+    cal_plain is passed in by run() to avoid reset_index() being called 8 times.
+    u_by_d is used directly for actual/history/trailing windows — no further
+    actual_units() calls needed since u_by_d already holds the full series.
+    """
     t0 = time.perf_counter()
 
     meta    = config.PRODUCTS[series_id]
@@ -107,18 +113,24 @@ def _build_result(
     hist_lo,    hist_hi    = start_d - W, start_d - 1
     prev_lo,    prev_hi    = start_d - 28, start_d - 1
 
-    actual        = store.actual_units(series_id, horizon_lo, horizon_hi)
-    history_units = store.actual_units(series_id, hist_lo, hist_hi)
+    # Slice all unit windows directly from u_by_d — pure Python dict lookup,
+    # no DataFrame mask needed since u_by_d already has the full series.
+    t_slices = time.perf_counter()
+    actual        = [float(u_by_d[d]) for d in range(horizon_lo, horizon_hi + 1) if d in u_by_d]
+    history_units = [float(u_by_d[d]) for d in range(hist_lo,    hist_hi + 1)    if d in u_by_d]
+    trailing_28   = [float(u_by_d[d]) for d in range(prev_lo,    prev_hi + 1)    if d in u_by_d]
+    prev_28_sum   = float(sum(trailing_28))
+    logger.info("[TIMING] %s unit slices from dict: %.3fs",
+                series_id, time.perf_counter() - t_slices)
+
     history_dates = [store.d_to_date(d).isoformat() for d in range(hist_lo,    hist_hi + 1)]
     horizon_dates = [store.d_to_date(d).isoformat() for d in range(horizon_lo, horizon_hi + 1)]
 
     t_metrics = time.perf_counter()
-    acc         = compute_accuracy(actual, forecast)
-    coh         = compute_coherence(actual, forecast)
-    prev_28_sum = float(sum(store.actual_units(series_id, prev_lo, prev_hi)))
-    vel         = compute_velocity(prev_28_sum, forecast)
-    trailing_28 = store.actual_units(series_id, prev_lo, prev_hi)
-    inv         = compute_inventory_risk(trailing_28, forecast)
+    acc = compute_accuracy(actual, forecast)
+    coh = compute_coherence(actual, forecast)
+    vel = compute_velocity(prev_28_sum, forecast)
+    inv = compute_inventory_risk(trailing_28, forecast)
     logger.info("[TIMING] %s metrics: %.3fs", series_id, time.perf_counter() - t_metrics)
 
     events_raw        = store.events_in_range(horizon_lo, horizon_hi)
@@ -136,13 +148,10 @@ def _build_result(
                             monthly_avg=monthly_avg, weekday_avg=weekday_avg)
     event_uplift = {str(k): float(v) for k, v in profile.get("event_uplift", {}).items()}
 
-    t_expl    = time.perf_counter()
-    cal_plain = store.calendar
-    if cal_plain is not None and cal_plain.index.name == "d_index":
-        cal_plain = cal_plain.reset_index()
+    t_expl = time.perf_counter()
     expl = compute_explainability(
         series_id, start_d,
-        f_no_event=forecast_no_event,   # pass pre-computed batch result
+        f_no_event=forecast_no_event,
         calendar=cal_plain,
         profiles=store.profiles,
         velocity=vel,
@@ -288,7 +297,12 @@ def run(product_ids: list[str], start_date_str: str) -> ForecastResponse:
     logger.info("[TIMING] batched counterfactual (%d products, 28 predict calls): %.3fs",
                 len(product_ids), time.perf_counter() - t_cf)
 
-    # ── Step 4: per-product result assembly (metrics + schema only — no more predict calls) ──
+    # ── Step 4: pre-compute cal_plain once — avoids 8x reset_index() ──────────────
+    cal_plain = store.calendar
+    if cal_plain is not None and cal_plain.index.name == "d_index":
+        cal_plain = cal_plain.reset_index()
+
+    # ── Step 5: per-product result assembly (metrics + schema only) ─────────────
     results = []
     for i, pid in enumerate(product_ids):
         t_prod = time.perf_counter()
@@ -298,6 +312,7 @@ def run(product_ids: list[str], start_date_str: str) -> ForecastResponse:
             forecast_no_event=batched_no_event[i],
             u_by_d=u_by_d_all[pid],
             p_by_d=p_by_d_all[pid],
+            cal_plain=cal_plain,
         )
         results.append(result)
         logger.info("[TIMING] %s result assembly (metrics+schema): %.3fs",
@@ -306,7 +321,6 @@ def run(product_ids: list[str], start_date_str: str) -> ForecastResponse:
     summary = _build_summary(results)
     logger.info("[TIMING] request TOTAL (%.3fs): %d product(s)",
                 time.perf_counter() - t_total, len(product_ids))
-
     return ForecastResponse(
         start_date=start_date_str,
         horizon=config.HORIZON,
