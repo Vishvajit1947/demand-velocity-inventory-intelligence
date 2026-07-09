@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 import os
+import time
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
@@ -70,6 +71,19 @@ def _field_from_request_validation(exc: RequestValidationError) -> str | None:
 
 def create_app() -> FastAPI:
     app = FastAPI(title="Demand Velocity & Inventory Intelligence", lifespan=lifespan)
+
+    # ── request timing middleware ────────────────────────────────────────────────
+    @app.middleware("http")
+    async def log_request_time(request: Request, call_next):
+        start = time.time()
+        response = await call_next(request)
+        duration = time.time() - start
+        print(
+            f"[REQ_TIME] {request.method} {request.url.path}"
+            f" status={response.status_code} took={duration:.3f}s",
+            flush=True,
+        )
+        return response
 
     # Rate limiter state & middleware
     app.state.limiter = limiter
