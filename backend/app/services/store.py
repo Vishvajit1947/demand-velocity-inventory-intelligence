@@ -126,26 +126,30 @@ class Store:
         Return {d_index: units} for all days of `series_id` (02 §4).
 
         Used by forecast_service / recursive_forecast as the u_by_d dict seed.
+        Vectorized via zip(array, array) — avoids iterrows() overhead.
         """
         if self.series_daily is None:
             raise RuntimeError("series_daily not loaded; cannot read units_by_d")
         df = self.series_daily
         mask = df["series_id"] == series_id
         sub = df.loc[mask, ["d_index", "units"]]
-        return {int(row["d_index"]): float(row["units"]) for _, row in sub.iterrows()}
+        return dict(zip(sub["d_index"].to_numpy().astype(int),
+                        sub["units"].to_numpy().astype(float)))
 
     def price_by_d(self, series_id: str) -> dict:
         """
         Return {d_index: sell_price} for all days of `series_id` (02 §4).
 
         Used by forecast_service / recursive_forecast as the p_by_d dict seed.
+        Vectorized via zip(array, array) — avoids iterrows() overhead.
         """
         if self.series_daily is None:
             raise RuntimeError("series_daily not loaded; cannot read price_by_d")
         df = self.series_daily
         mask = df["series_id"] == series_id
         sub = df.loc[mask, ["d_index", "sell_price"]]
-        return {int(row["d_index"]): float(row["sell_price"]) for _, row in sub.iterrows()}
+        return dict(zip(sub["d_index"].to_numpy().astype(int),
+                        sub["sell_price"].to_numpy().astype(float)))
 
     def events_in_range(self, d_from: int, d_to: int) -> list:
         """

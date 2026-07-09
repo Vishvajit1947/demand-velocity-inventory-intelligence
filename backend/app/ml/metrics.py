@@ -19,7 +19,6 @@ import numpy as np
 from scipy.stats import pearsonr
 
 from app.config import HORIZON, INITIAL_COVER_DAYS, LEAD_TIME_DAYS, SERVICE_Z
-from app.ml.forecast_engine import recursive_forecast
 
 __all__ = [
     "compute_accuracy",
@@ -244,23 +243,43 @@ def _horizon_rows(start_d: int, calendar):
 
 
 def compute_explainability(series_id: str, start_d: int, model, feature_meta,
-                           data, calendar, profiles: dict, velocity: dict,
+                           units_by_d: dict, price_by_d: dict,
+                           calendar, profiles: dict, velocity: dict,
                            forecast) -> dict:
     """Event-contribution counterfactual + narrative + 3 factors (03 §6.5).
 
     `forecast` is the already-computed normal run (f_full). This function computes
-    the neutralized counterfactual (f_no_event) once, then assembles the narrative
-    from numbers already available (velocity from MT-17, profiles from MT-14).
+    the neutralized counterfactual (f_no_event) once using the pre-built
+    units_by_d / price_by_d dicts (already extracted by the caller), avoiding
+    a second full DataFrame copy + filter inside recursive_forecast_dicts.
+
+    Args:
+        series_id:   Product slug.
+        start_d:     Horizon start d_index.
+        model:       LightGBM Booster.
+        feature_meta: feature_meta.json dict.
+        units_by_d:  {d_index: units} dict for this series (pre-extracted).
+        price_by_d:  {d_index: sell_price} dict for this series (pre-extracted).
+        calendar:    Plain-column calendar DataFrame (d_index as column).
+        profiles:    All series profiles dict.
+        velocity:    Already-computed velocity dict {value, status}.
+        forecast:    Already-computed normal forecast (28 floats).
 
     Returns dict(event_contribution_pct, snap_days_in_horizon, narrative, factors).
     """
+    from app.ml.forecast_engine import recursive_forecast_dicts  # avoid circular at module level
+
     prof = profiles[series_id]
     f_full = _as_float_array(forecast)
 
     # --- Event contribution via counterfactual (03 §6.5) ---
+    # Use the dict-based interface with already-extracted dicts — no DataFrame copy.
     f_no_event = _as_float_array(
-        recursive_forecast(series_id, start_d, model, feature_meta, data, calendar,
-                           neutralize_events=True)
+        recursive_forecast_dicts(
+            series_id, start_d, model, feature_meta,
+            units_by_d, price_by_d,
+            neutralize_events=True,
+        )
     )
     sum_full = float(np.sum(f_full))
     sum_none = float(np.sum(f_no_event))
@@ -294,11 +313,8 @@ def compute_explainability(series_id: str, start_d: int, model, feature_meta,
                 )
     snap_days_in_horizon = int((hrows["snap_count"] > 0).sum())
 
-    # --- Product name (03 §5 'name' or series_daily product_name; 02 §4) ---
-    product = prof.get("name")
-    if not product:
-        match = data.loc[data["series_id"].astype(str) == series_id, "product_name"]
-        product = str(match.iloc[0]) if len(match) else series_id
+    # --- Product name from profile (03 §5) ---
+    product = prof.get("name") or series_id
 
     # --- Narrative bullets (03 §6.5 templates, verbatim wording) ---
     status = velocity["status"]

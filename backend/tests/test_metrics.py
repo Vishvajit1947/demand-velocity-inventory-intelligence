@@ -394,17 +394,21 @@ def _fake_profiles():
 
 
 def test_explainability_assembly(monkeypatch):
-    # Stub recursive_forecast so the counterfactual (neutralize_events=True) returns
+    # Stub recursive_forecast_dicts so the counterfactual (neutralize_events=True) returns
     # a smaller sum than f_full -> positive event_contribution_pct, finite.
-    def fake_rf(series_id, start_d, model, feature_meta, data, calendar, neutralize_events=False):
+    import app.ml.forecast_engine as eng_mod
+
+    def fake_rfd(series_id, start_d, model, feature_meta,
+                 units_by_d, price_by_d, neutralize_events=False):
         return [1.0] * 28 if neutralize_events else [5.0] * 28
-    monkeypatch.setattr(metrics_mod, "recursive_forecast", fake_rf)
+
+    monkeypatch.setattr(eng_mod, "recursive_forecast_dicts", fake_rfd)
 
     forecast = [5.0] * 28
     velocity = {"value": 412.0, "status": "Accelerating"}
     out = compute_explainability(
         series_id="turkey", start_d=100, model=None, feature_meta=None,
-        data=pd.DataFrame({"series_id": ["turkey"], "product_name": ["Fresh Whole Turkey"]}),
+        units_by_d={}, price_by_d={},
         calendar=_fake_calendar(), profiles=_fake_profiles(),
         velocity=velocity, forecast=forecast,
     )
@@ -436,15 +440,19 @@ def test_explainability_assembly(monkeypatch):
 
 
 def test_explainability_no_events_omits_event_bullet(monkeypatch):
-    def fake_rf(series_id, start_d, model, feature_meta, data, calendar, neutralize_events=False):
+    import app.ml.forecast_engine as eng_mod
+
+    def fake_rfd(series_id, start_d, model, feature_meta,
+                 units_by_d, price_by_d, neutralize_events=False):
         return [3.0] * 28
-    monkeypatch.setattr(metrics_mod, "recursive_forecast", fake_rf)
+
+    monkeypatch.setattr(eng_mod, "recursive_forecast_dicts", fake_rfd)
 
     cal = _fake_calendar()
     cal["event_name_1"] = "none"  # remove all events
     out = compute_explainability(
         series_id="turkey", start_d=100, model=None, feature_meta=None,
-        data=pd.DataFrame({"series_id": ["turkey"], "product_name": ["Fresh Whole Turkey"]}),
+        units_by_d={}, price_by_d={},
         calendar=cal, profiles=_fake_profiles(),
         velocity={"value": 0.0, "status": "Stable"}, forecast=[3.0] * 28,
     )
@@ -457,12 +465,17 @@ def test_explainability_no_events_omits_event_bullet(monkeypatch):
 
 def test_explainability_div_zero_guard(monkeypatch):
     # neutralized forecast sums to 0 -> guard max(1e-6, .) prevents inf/nan
-    def fake_rf(series_id, start_d, model, feature_meta, data, calendar, neutralize_events=False):
+    import app.ml.forecast_engine as eng_mod
+
+    def fake_rfd(series_id, start_d, model, feature_meta,
+                 units_by_d, price_by_d, neutralize_events=False):
         return [0.0] * 28 if neutralize_events else [10.0] * 28
-    monkeypatch.setattr(metrics_mod, "recursive_forecast", fake_rf)
+
+    monkeypatch.setattr(eng_mod, "recursive_forecast_dicts", fake_rfd)
+
     out = compute_explainability(
         series_id="turkey", start_d=100, model=None, feature_meta=None,
-        data=pd.DataFrame({"series_id": ["turkey"], "product_name": ["Fresh Whole Turkey"]}),
+        units_by_d={}, price_by_d={},
         calendar=_fake_calendar(), profiles=_fake_profiles(),
         velocity={"value": 999.0, "status": "Accelerating"}, forecast=[10.0] * 28,
     )

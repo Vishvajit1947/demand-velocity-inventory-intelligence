@@ -367,6 +367,27 @@ def recursive_forecast(
 
 # ── backward-compatible dict interface (used by services/forecast_service.py) ──
 
+# Module-level calendar cache for recursive_forecast_dicts.
+# Built once on first call; avoids re-running add_event_distance() per request.
+_CAL_INDEXED_CACHE: "pd.DataFrame | None" = None
+
+
+def _get_cal_indexed() -> "pd.DataFrame":
+    """Return the calendar indexed by d_index, building it once and caching it."""
+    global _CAL_INDEXED_CACHE
+    if _CAL_INDEXED_CACHE is not None:
+        return _CAL_INDEXED_CACHE
+    try:
+        from app.ml.calendar_features import load_calendar, add_event_distance
+        cal_plain = add_event_distance(load_calendar())
+        if "d_index" not in cal_plain.columns:
+            cal_plain = cal_plain.reset_index()
+    except Exception:
+        cal_plain = load_calendar_features()
+    _CAL_INDEXED_CACHE = cal_plain.set_index("d_index")
+    return _CAL_INDEXED_CACHE
+
+
 def recursive_forecast_dicts(
     series_id: str,
     start_d: int,
@@ -397,16 +418,8 @@ def recursive_forecast_dicts(
     scale = float(series_scale.get(series_id, 1.0))
     train_mean_price = float(train_mean_price_map.get(series_id, 1.0))
 
-    # Load calendar for wday lookups
-    try:
-        from app.ml.calendar_features import load_calendar, add_event_distance
-        cal_plain = add_event_distance(load_calendar())
-        if "d_index" not in cal_plain.columns:
-            cal_plain = cal_plain.reset_index()
-    except Exception:
-        cal_plain = load_calendar_features()
-
-    cal_indexed = cal_plain.set_index("d_index")
+    # Use module-level cached indexed calendar — built once, reused every call.
+    cal_indexed = _get_cal_indexed()
 
     # Seed actuals from units_by_d (only days before start_d)
     u: dict[int, float] = {d: v for d, v in units_by_d.items() if d < start_d}

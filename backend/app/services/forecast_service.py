@@ -17,6 +17,8 @@ NOTE on compute_explainability signature (from metrics.py):
 """
 from __future__ import annotations
 
+import logging
+import time
 from datetime import date
 
 from app import config
@@ -42,6 +44,8 @@ from app.schemas.contracts import (
     Velocity,
 )
 from app.services.store import get_store
+
+logger = logging.getLogger("demand_velocity")
 
 
 class ForecastValidationError(ValueError):
@@ -79,6 +83,8 @@ def _validate_start_d(store, start_date_str: str) -> int:
 
 def _build_result(store, series_id: str, start_d: int) -> ForecastResult:
     """Assemble one ForecastResult for a product (05 §5)."""
+    t0 = time.perf_counter()
+
     meta = config.PRODUCTS[series_id]
     name = meta["name"]
     profile = store.profiles[series_id]
@@ -89,15 +95,21 @@ def _build_result(store, series_id: str, start_d: int) -> ForecastResult:
     hist_lo, hist_hi = start_d - W, start_d - 1
     prev_lo, prev_hi = start_d - 28, start_d - 1
 
-    # Build per-series dicts for the recursive forecast engine (03 §4, actual ML interface)
+    # --- FIX (a): vectorized dict extraction — no iterrows() ---
+    t_dicts = time.perf_counter()
     u_by_d = store.units_by_d(series_id)
     p_by_d = store.price_by_d(series_id)
+    logger.info("[TIMING] %s units_by_d+price_by_d: %.3fs", series_id,
+                time.perf_counter() - t_dicts)
 
     # 03 §4 forecast (float)
+    t_rf = time.perf_counter()
     forecast = recursive_forecast(
         series_id, start_d, store.model, store.feature_meta,
         u_by_d, p_by_d, neutralize_events=False,
     )
+    logger.info("[TIMING] %s recursive_forecast (main): %.3fs", series_id,
+                time.perf_counter() - t_rf)
 
     # actuals + history (02 §4, 05 §5)
     actual = store.actual_units(series_id, horizon_lo, horizon_hi)          # len 28
@@ -106,12 +118,15 @@ def _build_result(store, series_id: str, start_d: int) -> ForecastResult:
     horizon_dates = [store.d_to_date(d).isoformat() for d in range(horizon_lo, horizon_hi + 1)]
 
     # metrics (03 §6)
+    t_metrics = time.perf_counter()
     acc = compute_accuracy(actual, forecast)               # accuracy/smape/mae/rmse
     coh = compute_coherence(actual, forecast)              # coherence/coherence_label
     prev_28_sum = float(sum(store.actual_units(series_id, prev_lo, prev_hi)))
     vel = compute_velocity(prev_28_sum, forecast)          # value/status (03 §6.3)
     trailing_28 = store.actual_units(series_id, prev_lo, prev_hi)
     inv = compute_inventory_risk(trailing_28, forecast)    # 03 §6.4 (+ projected_stock)
+    logger.info("[TIMING] %s metrics (acc+coh+vel+inv): %.3fs", series_id,
+                time.perf_counter() - t_metrics)
 
     # calendar / seasonal / uplift (05 §5, 03 §5)
     events_raw = store.events_in_range(horizon_lo, horizon_hi)
@@ -136,9 +151,10 @@ def _build_result(store, series_id: str, start_d: int) -> ForecastResult:
     )
     event_uplift = {str(k): float(v) for k, v in profile.get("event_uplift", {}).items()}
 
-    # explainability (03 §6.5 via MT-19) — new spec signature: internally runs counterfactual
-    # compute_explainability uses the DataFrame-based recursive_forecast from forecast_engine
-    # (not the dict-based alias used above). Pass store.series_daily + plain-column calendar.
+    # --- FIX (b): pass u_by_d + p_by_d directly to explainability to avoid
+    # reloading series_daily DataFrame inside compute_explainability's second
+    # recursive_forecast call. Also pass the already-indexed calendar. ---
+    t_expl = time.perf_counter()
     cal_plain = store.calendar
     if cal_plain is not None and cal_plain.index.name == "d_index":
         cal_plain = cal_plain.reset_index()
@@ -147,12 +163,18 @@ def _build_result(store, series_id: str, start_d: int) -> ForecastResult:
         start_d,
         store.model,
         store.feature_meta,
-        store.series_daily,
+        u_by_d,          # <-- vectorized dict, not store.series_daily
+        p_by_d,          # <-- vectorized dict
         cal_plain,
         store.profiles,
         vel,
         forecast,
     )
+    logger.info("[TIMING] %s compute_explainability (incl. counterfactual): %.3fs",
+                series_id, time.perf_counter() - t_expl)
+
+    logger.info("[TIMING] %s _build_result TOTAL: %.3fs", series_id,
+                time.perf_counter() - t0)
 
     return ForecastResult(
         series_id=series_id,
@@ -226,7 +248,11 @@ def _build_summary(results: list[ForecastResult]) -> Summary:
 
 def run(product_ids: list[str], start_date_str: str) -> ForecastResponse:
     """Build the full ForecastResponse for the request (04 §4)."""
+    t_total = time.perf_counter()
     store = get_store()
+    logger.info("[TIMING] request start: products=%s start_date=%s model_loaded=%s",
+                product_ids, start_date_str, store.model_loaded)
+
     if not store.model_loaded:
         # surfaces as 500 via MT-24's generic handler (04 §3, 05 §6)
         raise RuntimeError("model artifacts not loaded; cannot forecast")
@@ -242,6 +268,9 @@ def run(product_ids: list[str], start_date_str: str) -> ForecastResponse:
 
     results = [_build_result(store, pid, start_d) for pid in product_ids]
     summary = _build_summary(results)
+
+    logger.info("[TIMING] request TOTAL (%.3fs): %d product(s)",
+                time.perf_counter() - t_total, len(product_ids))
 
     return ForecastResponse(
         start_date=start_date_str,
