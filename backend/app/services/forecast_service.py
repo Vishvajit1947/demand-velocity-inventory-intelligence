@@ -22,7 +22,11 @@ import time
 from datetime import date
 
 from app import config
-from app.ml.forecast_engine import recursive_forecast_dicts as recursive_forecast
+from app.ml.forecast_engine import (
+    _SeriesConfig,
+    recursive_forecast_dicts as recursive_forecast,
+    recursive_forecast_multi,
+)
 from app.ml.metrics import (
     compute_accuracy,
     compute_coherence,
@@ -81,100 +85,73 @@ def _validate_start_d(store, start_date_str: str) -> int:
     return start_d
 
 
-def _build_result(store, series_id: str, start_d: int) -> ForecastResult:
-    """Assemble one ForecastResult for a product (05 §5)."""
+def _build_result(
+    store,
+    series_id: str,
+    start_d: int,
+    forecast: list[float],
+    forecast_no_event: list[float],     # pre-computed batched counterfactual
+    u_by_d: dict[int, float],
+    p_by_d: dict[int, float],
+) -> ForecastResult:
+    """Assemble one ForecastResult given pre-computed main + counterfactual forecasts."""
     t0 = time.perf_counter()
 
-    meta = config.PRODUCTS[series_id]
-    name = meta["name"]
+    meta    = config.PRODUCTS[series_id]
+    name    = meta["name"]
     profile = store.profiles[series_id]
 
-    H = config.HORIZON                    # 28
-    W = config.HISTORY_WINDOW             # 84
+    H = config.HORIZON
+    W = config.HISTORY_WINDOW
     horizon_lo, horizon_hi = start_d, start_d + H - 1
-    hist_lo, hist_hi = start_d - W, start_d - 1
-    prev_lo, prev_hi = start_d - 28, start_d - 1
+    hist_lo,    hist_hi    = start_d - W, start_d - 1
+    prev_lo,    prev_hi    = start_d - 28, start_d - 1
 
-    # --- FIX (a): vectorized dict extraction — no iterrows() ---
-    t_dicts = time.perf_counter()
-    u_by_d = store.units_by_d(series_id)
-    p_by_d = store.price_by_d(series_id)
-    logger.info("[TIMING] %s units_by_d+price_by_d: %.3fs", series_id,
-                time.perf_counter() - t_dicts)
-
-    # 03 §4 forecast (float)
-    t_rf = time.perf_counter()
-    forecast = recursive_forecast(
-        series_id, start_d, store.model, store.feature_meta,
-        u_by_d, p_by_d, neutralize_events=False,
-    )
-    logger.info("[TIMING] %s recursive_forecast (main): %.3fs", series_id,
-                time.perf_counter() - t_rf)
-
-    # actuals + history (02 §4, 05 §5)
-    actual = store.actual_units(series_id, horizon_lo, horizon_hi)          # len 28
-    history_units = store.actual_units(series_id, hist_lo, hist_hi)         # len 84
-    history_dates = [store.d_to_date(d).isoformat() for d in range(hist_lo, hist_hi + 1)]
+    actual        = store.actual_units(series_id, horizon_lo, horizon_hi)
+    history_units = store.actual_units(series_id, hist_lo, hist_hi)
+    history_dates = [store.d_to_date(d).isoformat() for d in range(hist_lo,    hist_hi + 1)]
     horizon_dates = [store.d_to_date(d).isoformat() for d in range(horizon_lo, horizon_hi + 1)]
 
-    # metrics (03 §6)
     t_metrics = time.perf_counter()
-    acc = compute_accuracy(actual, forecast)               # accuracy/smape/mae/rmse
-    coh = compute_coherence(actual, forecast)              # coherence/coherence_label
+    acc         = compute_accuracy(actual, forecast)
+    coh         = compute_coherence(actual, forecast)
     prev_28_sum = float(sum(store.actual_units(series_id, prev_lo, prev_hi)))
-    vel = compute_velocity(prev_28_sum, forecast)          # value/status (03 §6.3)
+    vel         = compute_velocity(prev_28_sum, forecast)
     trailing_28 = store.actual_units(series_id, prev_lo, prev_hi)
-    inv = compute_inventory_risk(trailing_28, forecast)    # 03 §6.4 (+ projected_stock)
-    logger.info("[TIMING] %s metrics (acc+coh+vel+inv): %.3fs", series_id,
-                time.perf_counter() - t_metrics)
+    inv         = compute_inventory_risk(trailing_28, forecast)
+    logger.info("[TIMING] %s metrics: %.3fs", series_id, time.perf_counter() - t_metrics)
 
-    # calendar / seasonal / uplift (05 §5, 03 §5)
-    events_raw = store.events_in_range(horizon_lo, horizon_hi)
+    events_raw        = store.events_in_range(horizon_lo, horizon_hi)
     events_in_horizon = [EventInfo(**e) for e in events_raw]
-    snap_days = store.snap_days_in_range(horizon_lo, horizon_hi)
 
-    month = store.d_to_date(start_d).month
+    month        = store.d_to_date(start_d).month
     overall_mean = float(profile["overall_mean"])
-    monthly_avg = [float(x) for x in profile["monthly_avg"]]   # len 12
-    weekday_avg = [float(x) for x in profile["weekday_avg"]]   # len 7
-    if overall_mean != 0:
-        month_vs_avg_pct = round(
-            (monthly_avg[month - 1] - overall_mean) / overall_mean * 100, 1
-        )
-    else:
-        month_vs_avg_pct = 0.0
-    seasonal = Seasonal(
-        month=month,
-        month_vs_avg_pct=month_vs_avg_pct,
-        monthly_avg=monthly_avg,
-        weekday_avg=weekday_avg,
+    monthly_avg  = [float(x) for x in profile["monthly_avg"]]
+    weekday_avg  = [float(x) for x in profile["weekday_avg"]]
+    month_vs_avg_pct = (
+        round((monthly_avg[month - 1] - overall_mean) / overall_mean * 100, 1)
+        if overall_mean != 0 else 0.0
     )
+    seasonal     = Seasonal(month=month, month_vs_avg_pct=month_vs_avg_pct,
+                            monthly_avg=monthly_avg, weekday_avg=weekday_avg)
     event_uplift = {str(k): float(v) for k, v in profile.get("event_uplift", {}).items()}
 
-    # --- FIX (b): pass u_by_d + p_by_d directly to explainability to avoid
-    # reloading series_daily DataFrame inside compute_explainability's second
-    # recursive_forecast call. Also pass the already-indexed calendar. ---
-    t_expl = time.perf_counter()
+    t_expl    = time.perf_counter()
     cal_plain = store.calendar
     if cal_plain is not None and cal_plain.index.name == "d_index":
         cal_plain = cal_plain.reset_index()
     expl = compute_explainability(
-        series_id,
-        start_d,
-        store.model,
-        store.feature_meta,
-        u_by_d,          # <-- vectorized dict, not store.series_daily
-        p_by_d,          # <-- vectorized dict
-        cal_plain,
-        store.profiles,
-        vel,
-        forecast,
+        series_id, start_d,
+        f_no_event=forecast_no_event,   # pass pre-computed batch result
+        calendar=cal_plain,
+        profiles=store.profiles,
+        velocity=vel,
+        forecast=forecast,
     )
-    logger.info("[TIMING] %s compute_explainability (incl. counterfactual): %.3fs",
+    logger.info("[TIMING] %s explainability (assembly only): %.3fs",
                 series_id, time.perf_counter() - t_expl)
-
-    logger.info("[TIMING] %s _build_result TOTAL: %.3fs", series_id,
-                time.perf_counter() - t0)
+    logger.info("[TIMING] %s _build_result TOTAL: %.3fs",
+                series_id, time.perf_counter() - t0)
 
     return ForecastResult(
         series_id=series_id,
@@ -183,24 +160,17 @@ def _build_result(store, series_id: str, start_d: int) -> ForecastResult:
         history=HistoryBlock(dates=history_dates, units=history_units),
         horizon_dates=horizon_dates,
         actual=actual,
-        forecast=[round(x, 1) for x in forecast],          # 1 dp for display (05 §5)
+        forecast=[round(x, 1) for x in forecast],
         metrics=Metrics(
-            accuracy=acc["accuracy"],
-            wape=acc["wape"],
-            coherence=coh["coherence"],
-            coherence_label=coh["coherence_label"],
-            smape=acc["smape"],
-            mae=acc["mae"],
-            rmse=acc["rmse"],
+            accuracy=acc["accuracy"], wape=acc["wape"],
+            coherence=coh["coherence"], coherence_label=coh["coherence_label"],
+            smape=acc["smape"], mae=acc["mae"], rmse=acc["rmse"],
         ),
         velocity=Velocity(value=vel["value"], status=vel["status"]),
         inventory=Inventory(
-            on_hand=inv["on_hand"],
-            safety_stock=inv["safety_stock"],
-            reorder_point=inv["reorder_point"],
-            horizon_demand=inv["horizon_demand"],
-            cover_days=inv["cover_days"],
-            stockout_risk=inv["stockout_risk"],
+            on_hand=inv["on_hand"], safety_stock=inv["safety_stock"],
+            reorder_point=inv["reorder_point"], horizon_demand=inv["horizon_demand"],
+            cover_days=inv["cover_days"], stockout_risk=inv["stockout_risk"],
             overstock=inv["overstock"],
             recommended_order_qty=inv["recommended_order_qty"],
             projected_stock=inv["projected_stock"],
@@ -247,28 +217,93 @@ def _build_summary(results: list[ForecastResult]) -> Summary:
 
 
 def run(product_ids: list[str], start_date_str: str) -> ForecastResponse:
-    """Build the full ForecastResponse for the request (04 §4)."""
+    """Build the full ForecastResponse for the request (04 §4).
+
+    Multi-product path: builds one N-row feature batch per day for the main
+    forecast pass (28 model.predict calls instead of 28×N), then runs the
+    counterfactual and result assembly per-product sequentially.
+    Single-product path: falls through to the same logic with N=1.
+    """
     t_total = time.perf_counter()
-    store = get_store()
+    store   = get_store()
     logger.info("[TIMING] request start: products=%s start_date=%s model_loaded=%s",
                 product_ids, start_date_str, store.model_loaded)
 
     if not store.model_loaded:
-        # surfaces as 500 via MT-24's generic handler (04 §3, 05 §6)
         raise RuntimeError("model artifacts not loaded; cannot forecast")
 
     start_d = _validate_start_d(store, start_date_str)
 
-    # defense in depth — MT-20's ForecastRequest already enforces valid SeriesIds
     for pid in product_ids:
         if pid not in config.SERIES_IDS:
-            raise ForecastValidationError(
-                f"unknown product_id '{pid}'.", field="product_ids"
-            )
+            raise ForecastValidationError(f"unknown product_id '{pid}'.",
+                                          field="product_ids")
 
-    results = [_build_result(store, pid, start_d) for pid in product_ids]
+    feature_meta = store.feature_meta
+    series_scale = feature_meta.get("series_scale", {})
+    train_mean_price_map = feature_meta.get("train_mean_price", {})
+
+    # ── Step 1: extract per-series dicts (vectorized, shared across main + counterfactual) ──
+    t_dicts = time.perf_counter()
+    u_by_d_all = {pid: store.units_by_d(pid) for pid in product_ids}
+    p_by_d_all = {pid: store.price_by_d(pid) for pid in product_ids}
+    logger.info("[TIMING] dict extraction (%d products): %.3fs",
+                len(product_ids), time.perf_counter() - t_dicts)
+
+    # ── Step 2: batched main forecast pass — 28 predict() calls for all N products ──
+    t_batch = time.perf_counter()
+
+    def _last_price(pid: str) -> float:
+        p_by_d = p_by_d_all[pid]
+        tmp = next((p_by_d[d] for d in range(start_d - 1, 0, -1) if d in p_by_d), None)
+        if tmp is not None:
+            return float(tmp)
+        return float(train_mean_price_map.get(pid, 1.0))
+
+    series_configs = [
+        _SeriesConfig(
+            series_id        = pid,
+            units_by_d       = u_by_d_all[pid],
+            price_by_d       = p_by_d_all[pid],
+            scale            = float(series_scale.get(pid, 1.0)),
+            train_mean_price = float(train_mean_price_map.get(pid, 1.0)),
+            last_price       = _last_price(pid),
+        )
+        for pid in product_ids
+    ]
+
+    batched_forecasts = recursive_forecast_multi(
+        series_configs, start_d, store.model, feature_meta,
+        neutralize_events=False,
+    )
+    logger.info("[TIMING] batched main forecast (%d products, 28 predict calls): %.3fs",
+                len(product_ids), time.perf_counter() - t_batch)
+
+    # ── Step 3: batched counterfactual pass — 28 predict() calls, neutralize_events=True ──
+    t_cf = time.perf_counter()
+    batched_no_event = recursive_forecast_multi(
+        series_configs, start_d, store.model, feature_meta,
+        neutralize_events=True,
+    )
+    logger.info("[TIMING] batched counterfactual (%d products, 28 predict calls): %.3fs",
+                len(product_ids), time.perf_counter() - t_cf)
+
+    # ── Step 4: per-product result assembly (metrics + schema only — no more predict calls) ──
+    results = []
+    for i, pid in enumerate(product_ids):
+        t_prod = time.perf_counter()
+        result = _build_result(
+            store, pid, start_d,
+            forecast=batched_forecasts[i],
+            forecast_no_event=batched_no_event[i],
+            u_by_d=u_by_d_all[pid],
+            p_by_d=p_by_d_all[pid],
+        )
+        results.append(result)
+        logger.info("[TIMING] %s result assembly (metrics+schema): %.3fs",
+                    pid, time.perf_counter() - t_prod)
+
     summary = _build_summary(results)
-
     logger.info("[TIMING] request TOTAL (%.3fs): %d product(s)",
                 time.perf_counter() - t_total, len(product_ids))
 

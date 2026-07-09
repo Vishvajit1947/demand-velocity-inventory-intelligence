@@ -394,34 +394,22 @@ def _fake_profiles():
 
 
 def test_explainability_assembly(monkeypatch):
-    # Stub recursive_forecast_dicts so the counterfactual (neutralize_events=True) returns
-    # a smaller sum than f_full -> positive event_contribution_pct, finite.
-    import app.ml.forecast_engine as eng_mod
-
-    def fake_rfd(series_id, start_d, model, feature_meta,
-                 units_by_d, price_by_d, neutralize_events=False):
-        return [1.0] * 28 if neutralize_events else [5.0] * 28
-
-    monkeypatch.setattr(eng_mod, "recursive_forecast_dicts", fake_rfd)
-
+    # f_no_event passed directly — no need to stub recursive_forecast_dicts
     forecast = [5.0] * 28
+    f_no_event = [1.0] * 28          # sum=28; f_full sum=140 -> event_pct=(140-28)/28*100=400
     velocity = {"value": 412.0, "status": "Accelerating"}
     out = compute_explainability(
-        series_id="turkey", start_d=100, model=None, feature_meta=None,
-        units_by_d={}, price_by_d={},
+        series_id="turkey", start_d=100,
+        f_no_event=f_no_event,
         calendar=_fake_calendar(), profiles=_fake_profiles(),
         velocity=velocity, forecast=forecast,
     )
 
-    # finite numbers
     assert np.isfinite(out["event_contribution_pct"])
     assert isinstance(out["snap_days_in_horizon"], int)
-    # event_contribution_pct = (140 - 28)/28*100 = 400.0
     assert out["event_contribution_pct"] == 400.0
-    # snap days: 28-day window, even-index days have snap -> indices 0,2,...,26 = 14
     assert out["snap_days_in_horizon"] == 14
 
-    # narrative: non-empty list of strings, includes trend + seasonality + event + contribution
     assert isinstance(out["narrative"], list)
     assert len(out["narrative"]) >= 3
     assert all(isinstance(s, str) and s for s in out["narrative"])
@@ -429,54 +417,37 @@ def test_explainability_assembly(monkeypatch):
     assert any("Thanksgiving falls in this window" in s for s in out["narrative"])
     assert out["narrative"][-1].startswith("Events account for ~+400%")
 
-    # factors: exactly 3, right kinds/order/values
     factors = out["factors"]
     assert [f["kind"] for f in factors] == ["event", "seasonal", "trend"]
     assert [f["label"] for f in factors] == ["Event uplift", "Seasonality", "Trend"]
     assert factors[0]["value"] == out["event_contribution_pct"]
     assert factors[2]["value"] == 412.0
-    # seasonality value finite (month 11: (57-18.6)/18.6*100)
     assert np.isfinite(factors[1]["value"])
 
 
 def test_explainability_no_events_omits_event_bullet(monkeypatch):
-    import app.ml.forecast_engine as eng_mod
-
-    def fake_rfd(series_id, start_d, model, feature_meta,
-                 units_by_d, price_by_d, neutralize_events=False):
-        return [3.0] * 28
-
-    monkeypatch.setattr(eng_mod, "recursive_forecast_dicts", fake_rfd)
-
     cal = _fake_calendar()
-    cal["event_name_1"] = "none"  # remove all events
+    cal["event_name_1"] = "none"
+    # equal sums -> 0% contribution
+    f_no_event = [3.0] * 28
     out = compute_explainability(
-        series_id="turkey", start_d=100, model=None, feature_meta=None,
-        units_by_d={}, price_by_d={},
+        series_id="turkey", start_d=100,
+        f_no_event=f_no_event,
         calendar=cal, profiles=_fake_profiles(),
         velocity={"value": 0.0, "status": "Stable"}, forecast=[3.0] * 28,
     )
-    # equal sums -> 0% contribution, guarded (no div-by-zero)
     assert out["event_contribution_pct"] == 0.0
-    # no event bullet -> exactly 3 narrative lines (trend, seasonality, contribution)
     assert len(out["narrative"]) == 3
     assert not any("falls in this window" in s for s in out["narrative"])
 
 
 def test_explainability_div_zero_guard(monkeypatch):
     # neutralized forecast sums to 0 -> guard max(1e-6, .) prevents inf/nan
-    import app.ml.forecast_engine as eng_mod
-
-    def fake_rfd(series_id, start_d, model, feature_meta,
-                 units_by_d, price_by_d, neutralize_events=False):
-        return [0.0] * 28 if neutralize_events else [10.0] * 28
-
-    monkeypatch.setattr(eng_mod, "recursive_forecast_dicts", fake_rfd)
-
+    f_no_event = [0.0] * 28
     out = compute_explainability(
-        series_id="turkey", start_d=100, model=None, feature_meta=None,
-        units_by_d={}, price_by_d={},
+        series_id="turkey", start_d=100,
+        f_no_event=f_no_event,
         calendar=_fake_calendar(), profiles=_fake_profiles(),
         velocity={"value": 999.0, "status": "Accelerating"}, forecast=[10.0] * 28,
     )
-    assert np.isfinite(out["event_contribution_pct"])  # finite, not inf
+    assert np.isfinite(out["event_contribution_pct"])

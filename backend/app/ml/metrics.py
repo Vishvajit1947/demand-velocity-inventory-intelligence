@@ -242,54 +242,56 @@ def _horizon_rows(start_d: int, calendar):
     return calendar.loc[(calendar["d_index"] >= lo) & (calendar["d_index"] <= hi)]
 
 
-def compute_explainability(series_id: str, start_d: int, model, feature_meta,
-                           units_by_d: dict, price_by_d: dict,
+def compute_explainability(series_id: str, start_d: int,
+                           f_no_event: "list[float] | None",
                            calendar, profiles: dict, velocity: dict,
-                           forecast) -> dict:
+                           forecast,
+                           # Legacy keyword args kept for backward compat — ignored
+                           model=None, feature_meta=None,
+                           units_by_d=None, price_by_d=None) -> dict:
     """Event-contribution counterfactual + narrative + 3 factors (03 §6.5).
 
-    `forecast` is the already-computed normal run (f_full). This function computes
-    the neutralized counterfactual (f_no_event) once using the pre-built
-    units_by_d / price_by_d dicts (already extracted by the caller), avoiding
-    a second full DataFrame copy + filter inside recursive_forecast_dicts.
-
     Args:
-        series_id:   Product slug.
-        start_d:     Horizon start d_index.
-        model:       LightGBM Booster.
-        feature_meta: feature_meta.json dict.
-        units_by_d:  {d_index: units} dict for this series (pre-extracted).
-        price_by_d:  {d_index: sell_price} dict for this series (pre-extracted).
-        calendar:    Plain-column calendar DataFrame (d_index as column).
-        profiles:    All series profiles dict.
-        velocity:    Already-computed velocity dict {value, status}.
-        forecast:    Already-computed normal forecast (28 floats).
+        series_id:    Product slug.
+        start_d:      Horizon start d_index.
+        f_no_event:   Pre-computed neutralized counterfactual forecast (28 floats).
+                      Computed by the caller via recursive_forecast_multi(neutralize_events=True).
+                      If None, falls back to calling recursive_forecast_dicts internally
+                      (single-product path or legacy callers).
+        calendar:     Plain-column calendar DataFrame (d_index as column).
+        profiles:     All series profiles dict.
+        velocity:     Already-computed velocity dict {value, status}.
+        forecast:     Already-computed normal forecast (28 floats).
 
     Returns dict(event_contribution_pct, snap_days_in_horizon, narrative, factors).
     """
-    from app.ml.forecast_engine import recursive_forecast_dicts  # avoid circular at module level
-
-    prof = profiles[series_id]
+    prof   = profiles[series_id]
     f_full = _as_float_array(forecast)
 
     # --- Event contribution via counterfactual (03 §6.5) ---
-    # Use the dict-based interface with already-extracted dicts — no DataFrame copy.
-    f_no_event = _as_float_array(
-        recursive_forecast_dicts(
-            series_id, start_d, model, feature_meta,
-            units_by_d, price_by_d,
-            neutralize_events=True,
+    if f_no_event is not None:
+        # Fast path: counterfactual already computed by the batched multi-product pass.
+        f_no_event_arr = _as_float_array(f_no_event)
+    else:
+        # Fallback for single-product path or legacy callers: run internally.
+        from app.ml.forecast_engine import recursive_forecast_dicts
+        f_no_event_arr = _as_float_array(
+            recursive_forecast_dicts(
+                series_id, start_d, model, feature_meta,
+                units_by_d, price_by_d,
+                neutralize_events=True,
+            )
         )
-    )
+
     sum_full = float(np.sum(f_full))
-    sum_none = float(np.sum(f_no_event))
+    sum_none = float(np.sum(f_no_event_arr))
     event_contribution_pct = round(
         (sum_full - sum_none) / max(1e-6, sum_none) * 100.0, 1
     )
 
     # --- Seasonality (03 §6.5 / §5) ---
     month = _month_for_start_d(start_d, calendar)
-    monthly_avg = list(prof["monthly_avg"])
+    monthly_avg  = list(prof["monthly_avg"])
     overall_mean = float(prof.get("overall_mean", 0.0))
     if overall_mean > 0.0:
         month_vs_avg_pct = round(
@@ -298,12 +300,12 @@ def compute_explainability(series_id: str, start_d: int, model, feature_meta,
     else:
         month_vs_avg_pct = 0.0
     month_name = _pycal.month_name[month]
-    high_low = "high" if month_vs_avg_pct >= 0.0 else "low"
+    high_low   = "high" if month_vs_avg_pct >= 0.0 else "low"
 
     # --- Events in horizon + SNAP days (03 §6.5 / §3.3 / 02 §4) ---
-    hrows = _horizon_rows(start_d, calendar)
+    hrows            = _horizon_rows(start_d, calendar)
     event_uplift_map = prof.get("event_uplift", {})
-    events_in_horizon: list[tuple[str, float]] = []  # (name, uplift)
+    events_in_horizon: list[tuple[str, float]] = []
     for _, r in hrows.iterrows():
         for col in ("event_name_1", "event_name_2"):
             name = r[col] if col in r.index else "none"
@@ -317,7 +319,7 @@ def compute_explainability(series_id: str, start_d: int, model, feature_meta,
     product = prof.get("name") or series_id
 
     # --- Narrative bullets (03 §6.5 templates, verbatim wording) ---
-    status = velocity["status"]
+    status    = velocity["status"]
     vel_value = float(velocity["value"])
     narrative = [
         f"Demand is {status} ({vel_value:+.0f}% vs the prior 28 days).",
@@ -342,7 +344,7 @@ def compute_explainability(series_id: str, start_d: int, model, feature_meta,
 
     return {
         "event_contribution_pct": event_contribution_pct,
-        "snap_days_in_horizon": snap_days_in_horizon,
-        "narrative": narrative,
-        "factors": factors,
+        "snap_days_in_horizon":   snap_days_in_horizon,
+        "narrative":              narrative,
+        "factors":                factors,
     }

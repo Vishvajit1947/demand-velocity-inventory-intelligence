@@ -7,10 +7,14 @@ Target scaling (03 §2): the model was trained on per-series scaled targets
 (target = units / series_scale). Predictions are rescaled back:
     raw_output * series_scale = units
 
-Both interfaces are provided:
+Interfaces provided:
   1. MT-15 spec:   recursive_forecast(series_id, start_d, model, feature_meta, data, calendar)
   2. Service dict: recursive_forecast_dicts(series_id, start_d, model, feature_meta,
                                              units_by_d, price_by_d, neutralize_events)
+  3. Multi-product batch: recursive_forecast_multi(series_configs, start_d, model, feature_meta,
+                                                    neutralize_events)
+     Batches all N products into one model.predict(N-row DataFrame) call per day,
+     reducing 28*N individual predict() calls to 28 batched calls.
 
 Run the golden-fixture generator from backend/:
     python -m app.ml.forecast_engine --generate-golden
@@ -21,6 +25,7 @@ import argparse
 import json
 import pickle
 from pathlib import Path
+from typing import NamedTuple
 
 import numpy as np
 import pandas as pd
@@ -175,11 +180,28 @@ def _same_wday_mean(u: dict[int, float], t: int, wday_t: int,
     """Mean of u on the same wday as day t over the last 4 occurrences before t (03 §3.5).
 
     cal_indexed must be indexed by d_index so cal_indexed.loc[k]['wday'] works.
+    Kept for the DataFrame-based recursive_forecast (MT-15 spec interface).
     """
     same_wday: list[float] = []
     k = t - 1
     while k >= 1 and len(same_wday) < 4:
         if int(cal_indexed.loc[k]["wday"]) == wday_t:
+            same_wday.append(float(u[k]))
+        k -= 1
+    return float(np.mean(same_wday)) if same_wday else 0.0
+
+
+def _same_wday_mean_fast(u: dict[int, float], t: int, wday_t: int,
+                         wday_map: dict[int, int]) -> float:
+    """Fast variant of _same_wday_mean using a precomputed {d_index: wday} dict.
+
+    Replaces cal_indexed.loc[k] (pandas label lookup) with a plain dict access,
+    eliminating pandas overhead inside the tight 28-step loop.
+    """
+    same_wday: list[float] = []
+    k = t - 1
+    while k >= 1 and len(same_wday) < 4:
+        if wday_map.get(k) == wday_t:
             same_wday.append(float(u[k]))
         k -= 1
     return float(np.mean(same_wday)) if same_wday else 0.0
@@ -367,14 +389,14 @@ def recursive_forecast(
 
 # ── backward-compatible dict interface (used by services/forecast_service.py) ──
 
-# Module-level calendar cache for recursive_forecast_dicts.
-# Built once on first call; avoids re-running add_event_distance() per request.
+# Module-level calendar caches — built once on first call, reused every request.
 _CAL_INDEXED_CACHE: "pd.DataFrame | None" = None
+_WDAY_MAP_CACHE: "dict[int, int] | None" = None   # {d_index: wday} — fast lookup
 
 
 def _get_cal_indexed() -> "pd.DataFrame":
     """Return the calendar indexed by d_index, building it once and caching it."""
-    global _CAL_INDEXED_CACHE
+    global _CAL_INDEXED_CACHE, _WDAY_MAP_CACHE
     if _CAL_INDEXED_CACHE is not None:
         return _CAL_INDEXED_CACHE
     try:
@@ -385,7 +407,81 @@ def _get_cal_indexed() -> "pd.DataFrame":
     except Exception:
         cal_plain = load_calendar_features()
     _CAL_INDEXED_CACHE = cal_plain.set_index("d_index")
+    # Build the wday map at the same time — one vectorized pass
+    _WDAY_MAP_CACHE = dict(zip(
+        cal_plain["d_index"].to_numpy().astype(int),
+        cal_plain["wday"].to_numpy().astype(int),
+    ))
     return _CAL_INDEXED_CACHE
+
+
+def _get_wday_map() -> "dict[int, int]":
+    """Return the precomputed {d_index: wday} dict, building it if needed."""
+    if _WDAY_MAP_CACHE is None:
+        _get_cal_indexed()   # populates both caches
+    return _WDAY_MAP_CACHE  # type: ignore[return-value]
+
+
+def _build_row_fast(series_id: str, t: int, cal_row: "pd.Series",
+                    last_price: float, train_mean_price: float,
+                    u: dict[int, float], wday_map: dict[int, int],
+                    neutralize_events: bool = False) -> dict:
+    """_build_row variant using precomputed wday_map for the same-wday rolling mean.
+
+    Identical output to _build_row; differs only in the _same_wday_mean call,
+    which uses dict lookup instead of cal_indexed.loc[k].
+    """
+    price_rel = 1.0
+    if (train_mean_price and np.isfinite(train_mean_price) and
+            float(train_mean_price) != 0.0):
+        price_rel = float(last_price) / float(train_mean_price)
+
+    win7  = [u[t - k] for k in range(1, 8)]
+    win28 = [u[t - k] for k in range(1, 29)]
+    wday_t = int(cal_row["wday"])
+    roll_wday = _same_wday_mean_fast(u, t, wday_t, wday_map)
+
+    if neutralize_events:
+        en1 = et1 = en2 = et2 = NO_EVENT
+        is_event = 0
+        days_to_next = days_since_last = HORIZON
+    else:
+        en1 = str(cal_row["event_name_1"])
+        et1 = str(cal_row["event_type_1"])
+        en2 = str(cal_row["event_name_2"])
+        et2 = str(cal_row["event_type_2"])
+        is_event = int(cal_row["is_event"])
+        days_to_next = int(cal_row["days_to_next_event"])
+        days_since_last = int(cal_row["days_since_last_event"])
+
+    return {
+        "series_id":              series_id,
+        "wday":                   wday_t,
+        "month":                  int(cal_row["month"]),
+        "year":                   int(cal_row["year"]),
+        "day_of_month":           int(cal_row["day_of_month"]),
+        "week_of_year":           int(cal_row["week_of_year"]),
+        "is_weekend":             int(cal_row["is_weekend"]),
+        "snap_count":             int(cal_row["snap_count"]),
+        "event_name_1":           en1,
+        "event_type_1":           et1,
+        "event_name_2":           en2,
+        "event_type_2":           et2,
+        "is_event":               is_event,
+        "days_to_next_event":     days_to_next,
+        "days_since_last_event":  days_since_last,
+        "sell_price":             float(last_price),
+        "price_rel":              float(price_rel),
+        "lag_1":                  float(u[t - 1]),
+        "lag_7":                  float(u[t - 7]),
+        "lag_14":                 float(u[t - 14]),
+        "lag_28":                 float(u[t - 28]),
+        "roll_mean_7":            float(np.mean(win7)),
+        "roll_mean_28":           float(np.mean(win28)),
+        "roll_std_7":             _pop_std(win7),
+        "roll_std_28":            _pop_std(win28),
+        "roll_mean_7_by_wday":    roll_wday,
+    }
 
 
 def recursive_forecast_dicts(
@@ -397,10 +493,10 @@ def recursive_forecast_dicts(
     price_by_d: dict[int, float],
     neutralize_events: bool = False,
 ) -> list[float]:
-    """Dict-based interface for services/forecast_service.py.
+    """Dict-based single-series interface for services/forecast_service.py.
 
-    Accepts pre-extracted {d_index: value} dicts instead of the full DataFrame,
-    matching the signature that store.py/forecast_service.py use.
+    Used for single-product requests and for the counterfactual pass inside
+    compute_explainability. Uses _build_row_fast + precomputed wday_map.
     """
     if not (FIRST_SELECTABLE_D <= start_d <= LAST_SELECTABLE_D):
         raise ValueError(
@@ -408,23 +504,20 @@ def recursive_forecast_dicts(
             f"[{FIRST_SELECTABLE_D}, {LAST_SELECTABLE_D}] (02 §3)"
         )
 
-    features = feature_meta["features"]
-    categoricals = feature_meta["categorical_features"]
+    features      = feature_meta["features"]
+    categoricals  = feature_meta["categorical_features"]
     best_iteration = feature_meta.get("best_iteration")
-    categories = feature_meta.get("categories")
-    series_scale = feature_meta.get("series_scale", {})
+    categories    = feature_meta.get("categories")
+    series_scale  = feature_meta.get("series_scale", {})
     train_mean_price_map = feature_meta.get("train_mean_price", {})
 
-    scale = float(series_scale.get(series_id, 1.0))
+    scale            = float(series_scale.get(series_id, 1.0))
     train_mean_price = float(train_mean_price_map.get(series_id, 1.0))
 
-    # Use module-level cached indexed calendar — built once, reused every call.
     cal_indexed = _get_cal_indexed()
+    wday_map    = _get_wday_map()
 
-    # Seed actuals from units_by_d (only days before start_d)
     u: dict[int, float] = {d: v for d, v in units_by_d.items() if d < start_d}
-
-    # Forward-fill last known price
     last_price = next(
         (price_by_d[d] for d in range(start_d - 1, 0, -1) if d in price_by_d),
         train_mean_price,
@@ -433,9 +526,9 @@ def recursive_forecast_dicts(
     preds: list[float] = []
     for t in range(start_d, start_d + HORIZON):
         cal_row = cal_indexed.loc[t]
-        row = _build_row(
+        row = _build_row_fast(
             series_id, t, cal_row, last_price, train_mean_price,
-            u, cal_indexed, neutralize_events,
+            u, wday_map, neutralize_events,
         )
         x = _frame_from_row(row, features, categoricals, categories)
         if best_iteration:
@@ -447,6 +540,111 @@ def recursive_forecast_dicts(
         preds.append(yhat)
 
     return preds
+
+
+# ── multi-product batched interface — the fast path for N > 1 products ─────────
+
+class _SeriesConfig(NamedTuple):
+    """Per-series state needed by recursive_forecast_multi."""
+    series_id:        str
+    units_by_d:       dict   # {d_index: float}
+    price_by_d:       dict   # {d_index: float}
+    scale:            float
+    train_mean_price: float
+    last_price:       float
+
+
+def recursive_forecast_multi(
+    series_configs: "list[_SeriesConfig]",
+    start_d: int,
+    model,
+    feature_meta: dict,
+    neutralize_events: bool = False,
+) -> "list[list[float]]":
+    """Batch-predict all N products together for each of the 28 days.
+
+    Because the forecast is autoregressive (each day's lag features include the
+    previous day's *predicted* value), we cannot batch within a single product's
+    28-step pass. We CAN batch across products for a given day, because products
+    are independent of each other.
+
+    This reduces model.predict() calls from 28 × N (one per day per product)
+    to 28 (one per day, N-row batch), cutting fixed Python↔LightGBM overhead
+    by a factor of N.
+
+    Args:
+        series_configs:   List of _SeriesConfig named-tuples, one per product.
+        start_d:          First d_index of the 28-day horizon.
+        model:            LightGBM Booster.
+        feature_meta:     feature_meta.json dict.
+        neutralize_events: If True, zero out all event features (counterfactual).
+
+    Returns:
+        List of N lists, each containing 28 predicted floats, in the same order
+        as series_configs.
+    """
+    if not (FIRST_SELECTABLE_D <= start_d <= LAST_SELECTABLE_D):
+        raise ValueError(
+            f"start_d={start_d} out of range "
+            f"[{FIRST_SELECTABLE_D}, {LAST_SELECTABLE_D}] (02 §3)"
+        )
+
+    features      = feature_meta["features"]
+    categoricals  = feature_meta["categorical_features"]
+    best_iteration = feature_meta.get("best_iteration")
+    categories    = feature_meta.get("categories")
+
+    cal_indexed = _get_cal_indexed()
+    wday_map    = _get_wday_map()
+
+    n = len(series_configs)
+
+    # Per-product running state: u dict (seeded with actuals < start_d)
+    u_list: list[dict[int, float]] = [
+        {d: v for d, v in sc.units_by_d.items() if d < start_d}
+        for sc in series_configs
+    ]
+
+    # Collect 28 predictions per product
+    all_preds: list[list[float]] = [[] for _ in range(n)]
+
+    for t in range(start_d, start_d + HORIZON):
+        cal_row = cal_indexed.loc[t]
+
+        # Build one feature row per product for this day
+        rows = [
+            _build_row_fast(
+                sc.series_id, t, cal_row,
+                sc.last_price, sc.train_mean_price,
+                u_list[i], wday_map, neutralize_events,
+            )
+            for i, sc in enumerate(series_configs)
+        ]
+
+        # Assemble N-row DataFrame and predict in one call
+        x = pd.DataFrame(rows)[features]
+        if categories:
+            for c in categoricals:
+                x[c] = pd.Categorical(
+                    [str(r[c]) for r in rows],
+                    categories=[str(z) for z in categories[c]],
+                )
+        else:
+            for c in categoricals:
+                x[c] = x[c].astype("category")
+
+        if best_iteration:
+            raw_yhats = model.predict(x, num_iteration=best_iteration)
+        else:
+            raw_yhats = model.predict(x)
+
+        # Write predictions back into each product's u dict for next day's lags
+        for i, sc in enumerate(series_configs):
+            yhat = max(0.0, float(raw_yhats[i]) * sc.scale)
+            u_list[i][t] = yhat
+            all_preds[i].append(yhat)
+
+    return all_preds
 
 
 # ── convenience loaders (so callers run with just (series_id, start_d)) ────────
