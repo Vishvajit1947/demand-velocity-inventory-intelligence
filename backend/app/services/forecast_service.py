@@ -18,7 +18,9 @@ NOTE on compute_explainability signature (from metrics.py):
 from __future__ import annotations
 
 import logging
+import threading
 import time
+import uuid
 from datetime import date
 
 from app import config
@@ -233,6 +235,11 @@ def run(product_ids: list[str], start_date_str: str) -> ForecastResponse:
     counterfactual and result assembly per-product sequentially.
     Single-product path: falls through to the same logic with N=1.
     """
+    req_id      = str(uuid.uuid4())[:8]
+    thread_name = threading.current_thread().name
+    print(f"[CONCURRENCY] {req_id} thread={thread_name} START"
+          f" products={product_ids} start_date={start_date_str}", flush=True)
+
     t_total = time.perf_counter()
     store   = get_store()
     logger.info("[TIMING] request start: products=%s start_date=%s model_loaded=%s",
@@ -321,6 +328,8 @@ def run(product_ids: list[str], start_date_str: str) -> ForecastResponse:
     summary = _build_summary(results)
     logger.info("[TIMING] request TOTAL (%.3fs): %d product(s)",
                 time.perf_counter() - t_total, len(product_ids))
+    print(f"[CONCURRENCY] {req_id} thread={thread_name} END"
+          f" elapsed={time.perf_counter() - t_total:.3f}s", flush=True)
     return ForecastResponse(
         start_date=start_date_str,
         horizon=config.HORIZON,
