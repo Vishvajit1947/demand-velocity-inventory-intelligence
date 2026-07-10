@@ -46,6 +46,9 @@ class Store:
     load_errors: dict = field(default_factory=dict)
     # Internal cache: series_id -> train mean price.
     _train_mean_price: dict = field(default_factory=dict, repr=False)
+    # Pre-built per-series dicts for fast forecast lookups (populated after load).
+    _units_cache: dict = field(default_factory=dict, repr=False)   # {series_id: {d: units}}
+    _price_cache: dict = field(default_factory=dict, repr=False)   # {series_id: {d: price}}
 
     # ---- loading --------------------------------------------------------
     @classmethod
@@ -73,6 +76,20 @@ class Store:
             x is not None
             for x in (s.model, s.feature_meta, s.profiles, s.series_daily, s.calendar)
         )
+
+        # Pre-build per-series unit/price dicts once at startup so each forecast
+        # request does O(1) dict lookup instead of a full DataFrame mask scan.
+        if s.model_loaded and s.series_daily is not None:
+            df = s.series_daily
+            for sid, grp in df.groupby("series_id", sort=False):
+                d_arr = grp["d_index"].to_numpy().astype(int)
+                s._units_cache[str(sid)] = dict(
+                    zip(d_arr, grp["units"].to_numpy().astype(float))
+                )
+                s._price_cache[str(sid)] = dict(
+                    zip(d_arr, grp["sell_price"].to_numpy().astype(float))
+                )
+
         return s
 
     def _safe(self, loader, path, name):
@@ -129,31 +146,41 @@ class Store:
         """
         Return {d_index: units} for all days of `series_id` (02 §4).
 
-        Used by forecast_service / recursive_forecast as the u_by_d dict seed.
-        Vectorized via zip(array, array) — avoids iterrows() overhead.
+        Returns the pre-built cache dict built at startup (O(1) lookup).
+        Falls back to a DataFrame scan if the cache was not populated (e.g. in tests).
         """
+        if series_id in self._units_cache:
+            return self._units_cache[series_id]
+        # Fallback: build on demand (test / partial-load path)
         if self.series_daily is None:
             raise RuntimeError("series_daily not loaded; cannot read units_by_d")
         df = self.series_daily
         mask = df["series_id"] == series_id
         sub = df.loc[mask, ["d_index", "units"]]
-        return dict(zip(sub["d_index"].to_numpy().astype(int),
-                        sub["units"].to_numpy().astype(float)))
+        result = dict(zip(sub["d_index"].to_numpy().astype(int),
+                          sub["units"].to_numpy().astype(float)))
+        self._units_cache[series_id] = result
+        return result
 
     def price_by_d(self, series_id: str) -> dict:
         """
         Return {d_index: sell_price} for all days of `series_id` (02 §4).
 
-        Used by forecast_service / recursive_forecast as the p_by_d dict seed.
-        Vectorized via zip(array, array) — avoids iterrows() overhead.
+        Returns the pre-built cache dict built at startup (O(1) lookup).
+        Falls back to a DataFrame scan if the cache was not populated (e.g. in tests).
         """
+        if series_id in self._price_cache:
+            return self._price_cache[series_id]
+        # Fallback: build on demand (test / partial-load path)
         if self.series_daily is None:
             raise RuntimeError("series_daily not loaded; cannot read price_by_d")
         df = self.series_daily
         mask = df["series_id"] == series_id
         sub = df.loc[mask, ["d_index", "sell_price"]]
-        return dict(zip(sub["d_index"].to_numpy().astype(int),
-                        sub["sell_price"].to_numpy().astype(float)))
+        result = dict(zip(sub["d_index"].to_numpy().astype(int),
+                          sub["sell_price"].to_numpy().astype(float)))
+        self._price_cache[series_id] = result
+        return result
 
     def events_in_range(self, d_from: int, d_to: int) -> list:
         """
@@ -165,12 +192,14 @@ class Store:
         if self.calendar is None:
             raise RuntimeError("calendar not loaded; cannot read events_in_range")
         cal = self.calendar  # indexed by d_index
+        # Vectorized slice instead of per-day .loc[d] loop
+        idx = [d for d in range(d_from, d_to + 1) if d in cal.index]
+        if not idx:
+            return []
+        rows = cal.loc[idx]
         events = []
-        for d in range(d_from, d_to + 1):
-            if d not in cal.index:
-                continue
-            row = cal.loc[d]
-            date_str = self.d_to_date(d).isoformat()
+        for d, row in rows.iterrows():
+            date_str = self.d_to_date(int(d)).isoformat()
             for name_col, type_col in [("event_name_1", "event_type_1"),
                                         ("event_name_2", "event_type_2")]:
                 name = str(row[name_col])

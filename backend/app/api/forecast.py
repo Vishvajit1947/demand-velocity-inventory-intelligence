@@ -10,6 +10,7 @@ NOTE: `from __future__ import annotations` is intentionally omitted here so that
 FastAPI can resolve the ForecastRequest annotation at decoration time without
 Pydantic treating it as an unresolvable ForwardRef when combined with Body(...).
 """
+import asyncio
 import time
 from typing import Annotated
 
@@ -29,11 +30,6 @@ async def post_forecast(
     req: Annotated[ForecastRequest, Body()],
 ) -> ForecastResponse:
     """05 §5 — forecast the 28-day horizon for one or more products."""
-    # ── stage timing ─────────────────────────────────────────────────────────
-    # t0: function entered — body has already been read from the socket and
-    #     parsed into `req` by FastAPI's dependency injection before this line.
-    #     The gap between the middleware's start time and t0 is the time spent
-    #     receiving the request body over the network + Pydantic validation.
     t0 = time.time()
     print(
         f"[STAGE_TIME] endpoint entered: t0={t0:.6f}"
@@ -41,17 +37,14 @@ async def post_forecast(
         flush=True,
     )
 
-    # t1: immediately before handing off to the forecast engine
+    # Offload the CPU-bound forecast to a thread so the event loop stays free.
+    # asyncio.to_thread() runs the callable in the default ThreadPoolExecutor,
+    # which prevents blocking other in-flight requests on Railway's single vCPU.
     t1 = time.time()
-    print(
-        f"[STAGE_TIME] body parsed / pre-compute: t1={t1:.6f}"
-        f" delta_from_entry={t1 - t0:.3f}s",
-        flush=True,
+    result = await asyncio.to_thread(
+        forecast_service.run, req.product_ids, req.start_date
     )
 
-    result = forecast_service.run(req.product_ids, req.start_date)
-
-    # t2: computation finished, about to serialise and return
     t2 = time.time()
     print(
         f"[STAGE_TIME] computation complete: t2={t2:.6f}"
@@ -59,6 +52,5 @@ async def post_forecast(
         f" total_in_handler={t2 - t0:.3f}s",
         flush=True,
     )
-    # ─────────────────────────────────────────────────────────────────────────
 
     return result

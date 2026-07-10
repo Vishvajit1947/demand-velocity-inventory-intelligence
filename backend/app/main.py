@@ -52,12 +52,62 @@ async def lifespan(app: FastAPI):
     store = get_store()
     if store.model_loaded:
         logger.info("startup: artifacts loaded (model_loaded=True)")
+        # Warm up the LightGBM model — the first predict() call incurs JIT overhead
+        # (~0.5-1s). Running one dummy prediction at startup ensures the first real
+        # request gets the already-compiled model.
+        await _warmup_model(store)
     else:
         # 04 §3 — do not crash; /api/health reports model_loaded:false,
         # /api/forecast returns a clear 500.
         logger.warning("startup: artifacts NOT loaded (model_loaded=False)")
     yield
     # no teardown needed (in-memory singletons)
+
+
+async def _warmup_model(store) -> None:
+    """Run one dummy LightGBM prediction so the JIT path is compiled before the first request."""
+    import asyncio
+    import pandas as pd
+
+    def _do_warmup():
+        try:
+            feature_meta = store.feature_meta
+            features = feature_meta["features"]
+            categoricals = feature_meta["categorical_features"]
+            categories = feature_meta.get("categories")
+            best_iteration = feature_meta.get("best_iteration")
+
+            # Build a minimal 1-row dummy DataFrame (all zeros / "none" strings)
+            row = {f: 0 for f in features}
+            for c in categoricals:
+                row[c] = "none"
+            # series_id needs a valid category
+            row["series_id"] = "turkey"
+            row["event_name_1"] = "none"
+            row["event_type_1"] = "none"
+            row["event_name_2"] = "none"
+            row["event_type_2"] = "none"
+
+            x = pd.DataFrame([row])[features]
+            if categories:
+                for c in categoricals:
+                    x[c] = pd.Categorical(
+                        [str(row[c])],
+                        categories=[str(z) for z in categories[c]],
+                    )
+            else:
+                for c in categoricals:
+                    x[c] = x[c].astype("category")
+
+            if best_iteration:
+                store.model.predict(x, num_iteration=best_iteration)
+            else:
+                store.model.predict(x)
+            logger.info("startup: LightGBM model warmup complete")
+        except Exception as exc:
+            logger.warning("startup: model warmup failed (non-fatal): %s", exc)
+
+    await asyncio.to_thread(_do_warmup)
 
 
 def _field_from_request_validation(exc: RequestValidationError) -> str | None:

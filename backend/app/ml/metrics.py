@@ -306,9 +306,9 @@ def compute_explainability(series_id: str, start_d: int,
     hrows            = _horizon_rows(start_d, calendar)
     event_uplift_map = prof.get("event_uplift", {})
     events_in_horizon: list[tuple[str, float]] = []
-    for _, r in hrows.iterrows():
-        for col in ("event_name_1", "event_name_2"):
-            name = r[col] if col in r.index else "none"
+    # Vectorized: avoid iterrows() by accessing columns directly as Series
+    for col in ("event_name_1", "event_name_2"):
+        for name in hrows[col]:
             if isinstance(name, str) and name != "none":
                 events_in_horizon.append(
                     (name, float(event_uplift_map.get(name, 0.0)))
