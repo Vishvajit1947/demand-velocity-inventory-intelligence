@@ -139,6 +139,11 @@ export default function App() {
               <ExecutiveOverview
                 summary={forecastData?.summary}
                 loading={isPending}
+                highRiskProducts={
+                  forecastData?.results
+                    ?.filter((r) => r.inventory?.stockout_risk === "High")
+                    .map((r) => r.product_name) ?? []
+                }
               />
             </EntranceItem>
 

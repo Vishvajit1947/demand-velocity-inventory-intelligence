@@ -37,6 +37,11 @@ export interface ExecutiveOverviewProps {
    * Useful for tests and SSR. Defaults to true.
    */
   animate?: boolean;
+  /**
+   * Product names with stockout_risk = "High" — shown in hover tooltip on the
+   * High-Risk Products card.
+   */
+  highRiskProducts?: string[];
 }
 
 /** Build the tooltip string listing active events (06 §4.4). */
@@ -51,6 +56,7 @@ export function ExecutiveOverview({
   summary,
   loading = false,
   animate = true,
+  highRiskProducts = [],
 }: ExecutiveOverviewProps) {
   // MT-42 skeleton: a row of 4 card-shaped skeleton blocks (06 §5 Loading).
   const skeleton = (
@@ -70,15 +76,30 @@ export function ExecutiveOverview({
         skeleton={skeleton}
         minHeight={100}
       >
-        <SummaryCards summary={summary!} animate={animate} />
+        <SummaryCards summary={summary!} animate={animate} highRiskProducts={highRiskProducts} />
       </PanelState>
     </GlassPanel>
   );
 }
 
+/** Build the tooltip string for high-risk products. */
+function highRiskTooltip(products: string[]): string {
+  if (!products || products.length === 0) return "";
+  return `At stockout risk:\n${products.map((p) => `• ${p}`).join("\n")}`;
+}
+
 /** The actual stat-card grid — only rendered when summary is defined. */
-function SummaryCards({ summary, animate }: { summary: Summary; animate: boolean }) {
+function SummaryCards({
+  summary,
+  animate,
+  highRiskProducts,
+}: {
+  summary: Summary;
+  animate: boolean;
+  highRiskProducts: string[];
+}) {
   const highRisk = summary.high_risk_count;
+  const riskTooltip = highRisk > 0 ? highRiskTooltip(highRiskProducts) : "No stockout risk";
   const velocity = summary.avg_velocity;
   const velocityPositive = velocity >= 0;
   const events = summary.active_events ?? [];
@@ -107,6 +128,7 @@ function SummaryCards({ summary, animate }: { summary: Summary; animate: boolean
       <motion.div
         variants={animate ? entranceVariants : undefined}
         data-testid="card-high-risk"
+        title={riskTooltip}
       >
         <StatCard
           title="High-Risk Products"

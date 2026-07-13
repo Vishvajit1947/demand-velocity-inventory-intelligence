@@ -45,6 +45,13 @@ export interface EventImpactPanelProps {
 }
 
 export function EventImpactPanel({ result, loading = false }: EventImpactPanelProps) {
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  // Compute total event count for the "View All" button label (needs result)
+  const totalEvents = result
+    ? Object.keys(result.event_uplift ?? {}).length
+    : 0;
+
   const skeleton = (
     <div className="flex flex-col gap-3">
       {Array.from({ length: 4 }).map((_, i) => (
@@ -56,14 +63,43 @@ export function EventImpactPanel({ result, loading = false }: EventImpactPanelPr
   return (
     <GlassPanel animate={false}>
       <div className="flex h-full flex-col gap-3" data-testid="event-impact-panel">
-        <SectionTitle title="Event Impact" />
+        <SectionTitle
+          title="Event Impact"
+          right={
+            totalEvents > 0 ? (
+              <Button
+                variant="ghost"
+                className="h-6 px-2 py-0 text-[11px]"
+                onClick={() => setDrawerOpen(true)}
+                aria-haspopup="dialog"
+              >
+                View All ({totalEvents})
+              </Button>
+            ) : undefined
+          }
+        />
+        {/* Subheading — matches Seasonal Trend panel style */}
+        {result && (
+          <p
+            className="text-[14px] -mt-3"
+            style={{ color: "#E8EEF9", fontFamily: "Inter, sans-serif" }}
+          >
+            Top 5 historical impact
+          </p>
+        )}
         <PanelState
           loading={loading}
           hasData={!!result}
           skeleton={skeleton}
           minHeight={280}
         >
-          {result && <EventImpactContent result={result} />}
+          {result && (
+            <EventImpactContent
+              result={result}
+              drawerOpen={drawerOpen}
+              setDrawerOpen={setDrawerOpen}
+            />
+          )}
         </PanelState>
       </div>
     </GlassPanel>
@@ -71,10 +107,17 @@ export function EventImpactPanel({ result, loading = false }: EventImpactPanelPr
 }
 
 // ── Inner content ─────────────────────────────────────────────────────────────
-function EventImpactContent({ result }: { result: ForecastResult }) {
+function EventImpactContent({
+  result,
+  drawerOpen,
+  setDrawerOpen,
+}: {
+  result: ForecastResult;
+  drawerOpen: boolean;
+  setDrawerOpen: (v: boolean) => void;
+}) {
   const reduce = useReducedMotion();
   const { event_uplift } = result;
-  const [drawerOpen, setDrawerOpen] = useState(false);
 
   // All events sorted by absolute uplift descending
   const allRows = useMemo<UpliftRow[]>(
@@ -91,25 +134,6 @@ function EventImpactContent({ result }: { result: ForecastResult }) {
 
   return (
     <>
-      {/* Header row */}
-      <div className="flex items-center justify-between">
-        <p
-          className="text-[11px]"
-          style={{ color: MUTED, fontFamily: "JetBrains Mono, monospace" }}
-        >
-          top 5 historical impact
-        </p>
-        {totalEvents > 0 && (
-          <Button
-            variant="ghost"
-            className="h-6 px-2 py-0 text-[11px]"
-            onClick={() => setDrawerOpen(true)}
-            aria-haspopup="dialog"
-          >
-            View All ({totalEvents})
-          </Button>
-        )}
-      </div>
 
       {/* Bar chart — expanded height to fill freed timeline space */}
       {rows.length === 0 ? (

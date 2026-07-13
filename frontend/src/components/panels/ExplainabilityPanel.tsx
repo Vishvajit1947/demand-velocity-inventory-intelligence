@@ -86,6 +86,8 @@ export interface ExplainabilityPanelProps {
 }
 
 export function ExplainabilityPanel({ result, loading = false }: ExplainabilityPanelProps) {
+  const [tab, setTab] = useState<TabKey>("insights");
+
   // MT-42 skeleton: 3 bullet card shapes (06 §5).
   const skeleton = (
     <div className="flex flex-col gap-3">
@@ -97,15 +99,33 @@ export function ExplainabilityPanel({ result, loading = false }: ExplainabilityP
 
   return (
     <GlassPanel animate={false}>
-      <div className="flex h-full flex-col gap-3" data-testid="explainability-panel">
-        <SectionTitle title="Explainability" />
+      <div className="flex h-full flex-col gap-2" data-testid="explainability-panel">
+        <SectionTitle
+          title="Explainability"
+          className="mb-0"
+          right={
+            <div
+              className="flex gap-1 rounded-full p-1"
+              style={{ border: "1px solid var(--border-glass)" }}
+              role="tablist"
+              aria-label="Explainability views"
+            >
+              <TabChip active={tab === "insights"} onClick={() => setTab("insights")} id="tab-insights" aria-controls="panel-insights">
+                Insights
+              </TabChip>
+              <TabChip active={tab === "deep"} onClick={() => setTab("deep")} id="tab-deep" aria-controls="panel-deep">
+                Deep Dive
+              </TabChip>
+            </div>
+          }
+        />
         <PanelState
           loading={loading}
           hasData={!!result}
           skeleton={skeleton}
           minHeight={180}
         >
-          {result && <ExplainabilityContent result={result} />}
+          {result && <ExplainabilityContent result={result} tab={tab} />}
         </PanelState>
       </div>
     </GlassPanel>
@@ -113,14 +133,17 @@ export function ExplainabilityPanel({ result, loading = false }: ExplainabilityP
 }
 
 // ── Inner content ─────────────────────────────────────────────────────────────
-function ExplainabilityContent({ result }: { result: ForecastResult }) {
+function ExplainabilityContent({ result, tab }: { result: ForecastResult; tab: TabKey }) {
   const reduce = useReducedMotion();
-  const [tab, setTab] = useState<TabKey>("insights");
   const { explainability, history, seasonal } = result;
   const { narrative, factors } = explainability;
 
+  // Scale bars against 100 (i.e. 100 % = full bar) so the visual width
+  // directly represents the magnitude of each factor.  We still clamp to the
+  // largest absolute value when any factor exceeds 100 % so the bars never
+  // overflow their container.
   const maxAbs = useMemo(
-    () => Math.max(1, ...factors.map((f) => Math.abs(f.value))),
+    () => Math.max(100, ...factors.map((f) => Math.abs(f.value))),
     [factors],
   );
 
@@ -141,23 +164,6 @@ function ExplainabilityContent({ result }: { result: ForecastResult }) {
 
   return (
     <>
-      {/* Tab toggle — aligned to right */}
-      <div className="flex items-center justify-end">
-        <div
-          className="flex gap-1 rounded-full p-1"
-          style={{ border: "1px solid var(--border-glass)" }}
-          role="tablist"
-          aria-label="Explainability views"
-        >
-          <TabChip active={tab === "insights"} onClick={() => setTab("insights")} id="tab-insights" aria-controls="panel-insights">
-            Insights
-          </TabChip>
-          <TabChip active={tab === "deep"} onClick={() => setTab("deep")} id="tab-deep" aria-controls="panel-deep">
-            Deep Dive
-          </TabChip>
-        </div>
-      </div>
-
       {/* Insights tab — horizontal: narrative left, factor bars right */}
       {tab === "insights" && (
         <div id="panel-insights" role="tabpanel" aria-labelledby="tab-insights" className="flex flex-col xl:flex-row gap-4 xl:gap-6" data-testid="insights-tab">
@@ -190,24 +196,58 @@ function ExplainabilityContent({ result }: { result: ForecastResult }) {
             })}
           </div>
 
-          {/* Factor bars — right column */}
-          <div className="flex flex-col gap-2 xl:w-[300px] shrink-0" data-testid="factor-bars">
+          {/* Factor bars — diverging from center, right column */}
+          <div className="flex flex-col gap-3 xl:w-[300px] shrink-0" data-testid="factor-bars">
             {factors.map((f) => {
               const color    = KIND_COLOR[f.kind] ?? VIOLET;
-              const widthPct = (Math.abs(f.value) / maxAbs) * 100;
+              // Each half of the track represents maxAbs; bar fills its half
+              // proportionally so the visual width directly reflects magnitude.
+              const halfPct  = (Math.abs(f.value) / maxAbs) * 100;
+              const isNeg    = f.value < 0;
               return (
                 <div key={f.label} className="flex flex-col gap-1" data-testid="factor-bar">
+                  {/* Label row */}
                   <div className="flex items-center justify-between text-[12px]">
                     <span style={{ color: MUTED, fontFamily: "Inter, sans-serif" }}>{f.label}</span>
                     <span style={{ color, fontFamily: "JetBrains Mono, monospace", fontVariantNumeric: "tabular-nums" }}>
                       {signedPct(f.value)}
                     </span>
                   </div>
-                  <div className="h-1.5 w-full overflow-hidden rounded-full" style={{ background: "rgba(120, 160, 255, 0.10)" }}>
-                    <div
-                      className="h-full rounded-full"
-                      style={{ width: `${widthPct}%`, background: color, boxShadow: `0 0 6px ${color}66` }}
-                    />
+
+                  {/* Diverging track — two halves meeting at a center line */}
+                  <div className="relative flex h-1.5 w-full items-center" aria-hidden>
+                    {/* Left half — fills for negative values, growing rightward toward center */}
+                    <div className="relative h-full w-1/2 overflow-hidden rounded-l-full"
+                      style={{ background: "rgba(120, 160, 255, 0.10)" }}>
+                      {isNeg && (
+                        <div
+                          className="absolute right-0 h-full rounded-l-full"
+                          style={{
+                            width: `${halfPct}%`,
+                            background: color,
+                            boxShadow: `0 0 6px ${color}66`,
+                          }}
+                        />
+                      )}
+                    </div>
+
+                    {/* Center tick */}
+                    <div className="h-3 w-px shrink-0" style={{ background: "rgba(120, 160, 255, 0.35)" }} />
+
+                    {/* Right half — fills for positive values, growing leftward from center */}
+                    <div className="relative h-full w-1/2 overflow-hidden rounded-r-full"
+                      style={{ background: "rgba(120, 160, 255, 0.10)" }}>
+                      {!isNeg && (
+                        <div
+                          className="absolute left-0 h-full rounded-r-full"
+                          style={{
+                            width: `${halfPct}%`,
+                            background: color,
+                            boxShadow: `0 0 6px ${color}66`,
+                          }}
+                        />
+                      )}
+                    </div>
                   </div>
                 </div>
               );
