@@ -97,7 +97,7 @@ export function ProductMultiSelect({
         Products
       </label>
 
-      {/* Trigger button */}
+      {/* Trigger button — min-h-[44px] on mobile; min-w-[200px] desktop-only */}
       <button
         type="button"
         disabled={loading}
@@ -109,7 +109,11 @@ export function ProductMultiSelect({
           "border-border-glass bg-panel-solid/40 text-text-primary",
           "hover:border-accent-cyan/50 hover:text-accent-cyan",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-cyan/60",
-          "transition-colors disabled:opacity-40 min-w-[200px]",
+          "transition-colors disabled:opacity-40",
+          /* Desktop: keep the original min-width so the bar doesn't collapse */
+          "sm:min-w-[200px]",
+          /* Mobile touch target */
+          "min-h-[44px] sm:min-h-0",
           open && "border-accent-cyan/50 text-accent-cyan",
         )}
       >
@@ -159,14 +163,16 @@ export function ProductMultiSelect({
             )}
           </div>
 
-          {/* Select all / Clear row */}
-          <div className="flex items-center justify-between border-b border-border-glass px-3 py-1.5">
+          {/* Select all / Clear row — min-h-[44px] on mobile for both buttons */}
+          <div className="flex items-center justify-between border-b border-border-glass px-3 py-1.5 min-h-[44px] sm:min-h-0">
             <button
               type="button"
               onClick={selectAll}
               className={cn(
                 "flex items-center gap-1 text-caption text-accent-cyan",
                 "hover:underline focus-visible:outline-none",
+                /* Grow tap area vertically to fill the row height */
+                "self-stretch flex items-center",
               )}
             >
               <CheckCheck size={12} aria-hidden /> Select all
@@ -178,6 +184,7 @@ export function ProductMultiSelect({
               className={cn(
                 "flex items-center gap-1 text-caption text-text-muted",
                 "hover:text-text-primary disabled:opacity-40 focus-visible:outline-none",
+                "self-stretch flex items-center",
               )}
             >
               <X size={12} aria-hidden /> Clear
@@ -218,7 +225,9 @@ export function ProductMultiSelect({
                     }}
                     tabIndex={0}
                     className={cn(
+                      /* Mobile touch target: min-h-[44px]; desktop keeps py-2 */
                       "flex cursor-pointer items-center gap-2.5 px-3 py-2 text-body",
+                      "min-h-[44px] sm:min-h-0",
                       "transition-colors focus-visible:outline-none focus-visible:bg-panel",
                       isSelected
                         ? "text-accent-cyan bg-accent-cyan/5 hover:bg-accent-cyan/10"

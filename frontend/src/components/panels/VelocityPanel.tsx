@@ -192,10 +192,12 @@ function VelocityContent({ result, reduce }: { result: ForecastResult; reduce: b
         <StatusBadge kind="velocity" status={status} />
       </div>
 
-      {/* SVG Gauge — 180° semi-circular arc */}
+      {/* SVG Gauge — 180° semi-circular arc.
+           Mobile: container height reduced to 160px — removes ~40px of dead space
+           below the arc that appears when the viewBox scales down in width.
+           Desktop (sm+): original 200px unchanged. */}
       <div
-        className="relative w-full"
-        style={{ height: 200 }}
+        className="relative w-full h-[160px] sm:h-[200px]"
         aria-hidden="true"
         data-testid="velocity-gauge"
       >
@@ -214,7 +216,12 @@ function VelocityContent({ result, reduce }: { result: ForecastResult; reduce: b
             />
           ))}
 
-          {/* Tick labels along the arc */}
+          {/* Tick labels along the arc.
+               Mobile (< sm): hidden — at narrow widths the 9.5-unit SVG fontSize
+               scales to near the 11px readability floor. The StatusBadge + value
+               text already convey the same information accessibly (aria-hidden="true"
+               on the gauge means ticks are decorative only).
+               Desktop (sm+): visible as before. */}
           {ticks.map(({ v, lx, ly }) => (
             <text
               key={v}
@@ -225,6 +232,7 @@ function VelocityContent({ result, reduce }: { result: ForecastResult; reduce: b
               fontSize={9.5}
               fontFamily="JetBrains Mono, monospace"
               fill="rgba(255,255,255,0.65)"
+              className="hidden sm:inline"
             >
               {v}
             </text>

@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!-- Background: deep navy rounded square -->
+  <rect width="32" height="32" rx="7" ry="7" fill="#070B14" />
+
+  <!-- V shape: left leg down to bottom apex, right leg up -->
+  <!-- Left leg: top-left down to apex -->
+  <!-- Right leg: apex up to top-right, continuing as arrow -->
+  <!-- Drawn as a single filled path for thick strokes -->
+
+  <!-- V body in cyan, right leg transitions to lime at arrowhead -->
+  <!-- Using stroke-based polyline for clean thick V -->
+
+  <!-- Cyan portion: left leg + bottom V + right leg up to arrow base -->
+  <polyline
+    points="5,7  13,24  21,10"
+    fill="none"
+    stroke="#2FE6FF"
+    stroke-width="3.8"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+
+  <!-- Lime arrowhead: short segment continuing upward-right from V tip -->
+  <polyline
+    points="21,10  26,5"
+    fill="none"
+    stroke="#4DFFB0"
+    stroke-width="3.8"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+
+  <!-- Lime arrowhead cap: two short barbs forming the arrow tip -->
+  <polyline
+    points="20,5  26,5  26,11"
+    fill="none"
+    stroke="#4DFFB0"
+    stroke-width="3.2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+</svg>

@@ -289,7 +289,9 @@ function ExplainabilityContent({ result, tab }: { result: ForecastResult; tab: T
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          {/* Mobile: single column so each chart gets full panel width and labels
+               stay readable. Desktop (sm+): original two-column layout unchanged. */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <ProfileMini title="Monthly profile" rows={monthRows} reduce={!!reduce} testid="monthly-mini" tooltipValueLabel="avg units" />
             <ProfileMini title="Weekday profile (Sat→Fri)" rows={weekdayRows} reduce={!!reduce} testid="weekday-mini" tooltipValueLabel="avg units" />
           </div>
@@ -317,7 +319,8 @@ function TabChip({ active, onClick, id, "aria-controls": ariaControls, children 
       aria-selected={active}
       aria-controls={ariaControls}
       onClick={onClick}
-      className="rounded-full px-3 py-1 text-[12px] transition-colors"
+      /* Mobile touch target: min-h-[44px] px-4; desktop keeps the original compact look */
+      className="rounded-full px-3 py-1 text-[12px] transition-colors min-h-[44px] sm:min-h-0"
       style={{
         color:        active ? "#070B14" : MUTED,
         background:   active ? CYAN      : "transparent",
@@ -350,8 +353,8 @@ function ProfileMini({ title, rows, reduce, testid, tooltipValueLabel }: Profile
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={rows} margin={{ top: 4, right: 4, bottom: 0, left: -24 }}>
             <CartesianGrid vertical={false} stroke={GRID} />
-            <XAxis dataKey="label" tick={{ fill: MUTED, fontFamily: "Inter, sans-serif", fontSize: 9 }} stroke={GRID} interval={0} />
-            <YAxis tick={{ fill: MUTED, fontFamily: "JetBrains Mono, monospace", fontSize: 9 }} stroke={GRID} />
+            <XAxis dataKey="label" tick={{ fill: MUTED, fontFamily: "Inter, sans-serif", fontSize: 11 }} stroke={GRID} interval={0} />
+            <YAxis tick={{ fill: MUTED, fontFamily: "JetBrains Mono, monospace", fontSize: 11 }} stroke={GRID} />
             <Tooltip
               cursor={{ fill: "rgba(120,160,255,0.06)" }}
               contentStyle={tooltipStyle}

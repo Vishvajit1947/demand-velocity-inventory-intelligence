@@ -148,7 +148,7 @@ export default function App() {
             </EntranceItem>
 
             {/* P2 — Forecast Result (8 cols at xl) + P3 — Velocity (4 cols at xl) */}
-            <EntranceItem className="min-h-[380px] xl:col-span-8">
+            <EntranceItem className="xl:col-span-8">
               <ForecastResult
                 results={forecastData?.results ?? []}
                 activeSeriesId={activeSeriesId}
@@ -158,31 +158,31 @@ export default function App() {
               />
             </EntranceItem>
 
-            <EntranceItem className="min-h-[320px] xl:col-span-4">
+            <EntranceItem className="xl:col-span-4">
               <VelocityPanel result={selectedResult} loading={isPending} />
             </EntranceItem>
 
             {/* P4 — Inventory Risk (full 12 cols at xl) — PRIMARY OBJECTIVE */}
-            <EntranceItem className="min-h-[320px] xl:col-span-12">
+            <EntranceItem className="xl:col-span-12">
               <InventoryRiskPanel result={selectedResult} loading={isPending} />
             </EntranceItem>
 
             {/* P5 — Explainability (full 12 cols at xl) */}
-            <EntranceItem className="min-h-[240px] xl:col-span-12">
+            <EntranceItem className="xl:col-span-12">
               <ExplainabilityPanel result={selectedResult} loading={isPending} />
             </EntranceItem>
 
             {/* P6 — Event Impact (6 cols at xl) + P7 — Seasonal Trend (6 cols at xl) */}
-            <EntranceItem className="min-h-[320px] xl:col-span-6">
+            <EntranceItem className="xl:col-span-6">
               <EventImpactPanel result={selectedResult} loading={isPending} />
             </EntranceItem>
 
-            <EntranceItem className="min-h-[320px] xl:col-span-6">
+            <EntranceItem className="xl:col-span-6">
               <SeasonalPanel result={selectedResult} loading={isPending} />
             </EntranceItem>
 
             {/* P8 — Forecast Quality / Accuracy & Coherence (full 12 cols at xl) */}
-            <EntranceItem className="min-h-[220px] xl:col-span-12">
+            <EntranceItem className="xl:col-span-12">
               <AccuracyCoherence
                 metrics={selectedResult?.metrics}
                 loading={isPending}

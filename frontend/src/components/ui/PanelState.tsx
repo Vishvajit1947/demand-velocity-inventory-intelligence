@@ -30,6 +30,10 @@ export const IDLE_PROMPT = "Select a date & products, then Forecast";
  * Error is NOT its own branch here — it's surfaced by ToastHost (06 §5).
  * "Error keeping last good data" is automatic: hasData stays true when TanStack
  * Query retains the previous successful data across a later error (06 §5).
+ *
+ * Mobile fix: minHeight is applied only during Loading and Idle states.
+ * When hasData=true the wrapper has no minimum height so content-short panels
+ * don't create empty space at the bottom of their glass card on mobile.
  */
 export function PanelState({
   loading,
@@ -40,6 +44,8 @@ export function PanelState({
   className,
 }: PanelStateProps) {
   let body: ReactNode;
+  // Only enforce minHeight during loading/idle — not when real content is present.
+  const appliedMinHeight = hasData && !loading ? undefined : minHeight;
 
   if (loading) {
     // 06 §5 Loading — skeleton shimmer; role=status so SR announces it (06 §6).
@@ -62,7 +68,7 @@ export function PanelState({
   }
 
   return (
-    <div className={className} style={{ minHeight }}>
+    <div className={className} style={{ minHeight: appliedMinHeight }}>
       {body}
     </div>
   );

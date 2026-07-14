@@ -52,10 +52,16 @@
   }
 }
 
-/* MT-43 — Sticky control bar with a fixed height so it never shifts (06 §3). */
+/* MT-43 — Sticky control bar with a fixed height so it never shifts (06 §3).
+   On mobile (< sm / 640 px) the bar stacks vertically and is taller, so we
+   remove the min-height constraint there and restore it at sm+. */
 .control-bar {
   position: sticky;
   top: 0;
   z-index: 20;
-  min-height: 60px;
+}
+@media (min-width: 640px) {
+  .control-bar {
+    min-height: 60px;
+  }
 }

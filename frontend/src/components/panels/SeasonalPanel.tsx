@@ -103,8 +103,12 @@ function SeasonalContent({ result }: { result: ForecastResult }) {
 
   return (
     <>
-      {/* Callout + current-month legend on the same row */}
-      <div className="flex items-center justify-between gap-2">
+      {/* Callout + current-month legend.
+           Mobile: flex-wrap lets the "Current month" legend drop to its own
+           line when the callout text + legend can't fit side-by-side on narrow
+           screens (the legend has flex-shrink-0 so it never squeezes).
+           Desktop: single-row layout unchanged — gap-2 + justify-between. */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <p
           className="text-[14px]"
           style={{ color: "#E8EEF9", fontFamily: "Inter, sans-serif" }}

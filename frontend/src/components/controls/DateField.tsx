@@ -91,7 +91,7 @@ export function DateField({ value, bounds, loading, onChange }: DateFieldProps) 
         Forecast Start Date
       </label>
 
-      {/* Trigger button */}
+      {/* Trigger button — min-h-[44px] on mobile for touch target; desktop keeps py-2 */}
       <button
         ref={triggerRef}
         type="button"
@@ -106,6 +106,8 @@ export function DateField({ value, bounds, loading, onChange }: DateFieldProps) 
           "transition-shadow hover:shadow-[0_0_18px_rgba(47,230,255,0.18)]",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-cyan/60",
           "disabled:cursor-not-allowed disabled:opacity-50",
+          /* Mobile touch target */
+          "min-h-[44px] sm:min-h-0",
         )}
       >
         <CalendarIcon size={16} className="shrink-0 text-accent-cyan" aria-hidden />
@@ -147,7 +149,7 @@ export function DateField({ value, bounds, loading, onChange }: DateFieldProps) 
               )}
             />
 
-            {/* Snap to week start toggle */}
+            {/* Snap to week start toggle — min-h-[44px] on mobile for touch target */}
             <button
               type="button"
               role="switch"
@@ -157,6 +159,8 @@ export function DateField({ value, bounds, loading, onChange }: DateFieldProps) 
                 "flex items-center gap-2 text-caption text-text-muted",
                 "hover:text-text-primary focus:outline-none",
                 "focus-visible:ring-2 focus-visible:ring-accent-cyan/60 rounded",
+                /* Mobile touch target */
+                "min-h-[44px] sm:min-h-0",
               )}
             >
               <span

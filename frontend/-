@@ -1,0 +1,1986 @@
+*, ::before, ::after {
+  --tw-border-spacing-x: 0;
+  --tw-border-spacing-y: 0;
+  --tw-translate-x: 0;
+  --tw-translate-y: 0;
+  --tw-rotate: 0;
+  --tw-skew-x: 0;
+  --tw-skew-y: 0;
+  --tw-scale-x: 1;
+  --tw-scale-y: 1;
+  --tw-pan-x:  ;
+  --tw-pan-y:  ;
+  --tw-pinch-zoom:  ;
+  --tw-scroll-snap-strictness: proximity;
+  --tw-gradient-from-position:  ;
+  --tw-gradient-via-position:  ;
+  --tw-gradient-to-position:  ;
+  --tw-ordinal:  ;
+  --tw-slashed-zero:  ;
+  --tw-numeric-figure:  ;
+  --tw-numeric-spacing:  ;
+  --tw-numeric-fraction:  ;
+  --tw-ring-inset:  ;
+  --tw-ring-offset-width: 0px;
+  --tw-ring-offset-color: #fff;
+  --tw-ring-color: rgb(59 130 246 / 0.5);
+  --tw-ring-offset-shadow: 0 0 #0000;
+  --tw-ring-shadow: 0 0 #0000;
+  --tw-shadow: 0 0 #0000;
+  --tw-shadow-colored: 0 0 #0000;
+  --tw-blur:  ;
+  --tw-brightness:  ;
+  --tw-contrast:  ;
+  --tw-grayscale:  ;
+  --tw-hue-rotate:  ;
+  --tw-invert:  ;
+  --tw-saturate:  ;
+  --tw-sepia:  ;
+  --tw-drop-shadow:  ;
+  --tw-backdrop-blur:  ;
+  --tw-backdrop-brightness:  ;
+  --tw-backdrop-contrast:  ;
+  --tw-backdrop-grayscale:  ;
+  --tw-backdrop-hue-rotate:  ;
+  --tw-backdrop-invert:  ;
+  --tw-backdrop-opacity:  ;
+  --tw-backdrop-saturate:  ;
+  --tw-backdrop-sepia:  ;
+  --tw-contain-size:  ;
+  --tw-contain-layout:  ;
+  --tw-contain-paint:  ;
+  --tw-contain-style:  ;
+}
+
+::backdrop {
+  --tw-border-spacing-x: 0;
+  --tw-border-spacing-y: 0;
+  --tw-translate-x: 0;
+  --tw-translate-y: 0;
+  --tw-rotate: 0;
+  --tw-skew-x: 0;
+  --tw-skew-y: 0;
+  --tw-scale-x: 1;
+  --tw-scale-y: 1;
+  --tw-pan-x:  ;
+  --tw-pan-y:  ;
+  --tw-pinch-zoom:  ;
+  --tw-scroll-snap-strictness: proximity;
+  --tw-gradient-from-position:  ;
+  --tw-gradient-via-position:  ;
+  --tw-gradient-to-position:  ;
+  --tw-ordinal:  ;
+  --tw-slashed-zero:  ;
+  --tw-numeric-figure:  ;
+  --tw-numeric-spacing:  ;
+  --tw-numeric-fraction:  ;
+  --tw-ring-inset:  ;
+  --tw-ring-offset-width: 0px;
+  --tw-ring-offset-color: #fff;
+  --tw-ring-color: rgb(59 130 246 / 0.5);
+  --tw-ring-offset-shadow: 0 0 #0000;
+  --tw-ring-shadow: 0 0 #0000;
+  --tw-shadow: 0 0 #0000;
+  --tw-shadow-colored: 0 0 #0000;
+  --tw-blur:  ;
+  --tw-brightness:  ;
+  --tw-contrast:  ;
+  --tw-grayscale:  ;
+  --tw-hue-rotate:  ;
+  --tw-invert:  ;
+  --tw-saturate:  ;
+  --tw-sepia:  ;
+  --tw-drop-shadow:  ;
+  --tw-backdrop-blur:  ;
+  --tw-backdrop-brightness:  ;
+  --tw-backdrop-contrast:  ;
+  --tw-backdrop-grayscale:  ;
+  --tw-backdrop-hue-rotate:  ;
+  --tw-backdrop-invert:  ;
+  --tw-backdrop-opacity:  ;
+  --tw-backdrop-saturate:  ;
+  --tw-backdrop-sepia:  ;
+  --tw-contain-size:  ;
+  --tw-contain-layout:  ;
+  --tw-contain-paint:  ;
+  --tw-contain-style:  ;
+}
+
+/*
+! tailwindcss v3.4.19 | MIT License | https://tailwindcss.com
+*/
+
+/*
+1. Prevent padding and border from affecting element width. (https://github.com/mozdevs/cssremedy/issues/4)
+2. Allow adding a border to an element by just adding a border-width. (https://github.com/tailwindcss/tailwindcss/pull/116)
+*/
+
+*,
+::before,
+::after {
+  box-sizing: border-box;
+  /* 1 */
+  border-width: 0;
+  /* 2 */
+  border-style: solid;
+  /* 2 */
+  border-color: #e5e7eb;
+  /* 2 */
+}
+
+::before,
+::after {
+  --tw-content: '';
+}
+
+/*
+1. Use a consistent sensible line-height in all browsers.
+2. Prevent adjustments of font size after orientation changes in iOS.
+3. Use a more readable tab size.
+4. Use the user's configured `sans` font-family by default.
+5. Use the user's configured `sans` font-feature-settings by default.
+6. Use the user's configured `sans` font-variation-settings by default.
+7. Disable tap highlights on iOS
+*/
+
+html,
+:host {
+  line-height: 1.5;
+  /* 1 */
+  -webkit-text-size-adjust: 100%;
+  /* 2 */
+  -moz-tab-size: 4;
+  /* 3 */
+  -o-tab-size: 4;
+     tab-size: 4;
+  /* 3 */
+  font-family: "Inter", system-ui, sans-serif;
+  /* 4 */
+  font-feature-settings: normal;
+  /* 5 */
+  font-variation-settings: normal;
+  /* 6 */
+  -webkit-tap-highlight-color: transparent;
+  /* 7 */
+}
+
+/*
+1. Remove the margin in all browsers.
+2. Inherit line-height from `html` so users can set them as a class directly on the `html` element.
+*/
+
+body {
+  margin: 0;
+  /* 1 */
+  line-height: inherit;
+  /* 2 */
+}
+
+/*
+1. Add the correct height in Firefox.
+2. Correct the inheritance of border color in Firefox. (https://bugzilla.mozilla.org/show_bug.cgi?id=190655)
+3. Ensure horizontal rules are visible by default.
+*/
+
+hr {
+  height: 0;
+  /* 1 */
+  color: inherit;
+  /* 2 */
+  border-top-width: 1px;
+  /* 3 */
+}
+
+/*
+Add the correct text decoration in Chrome, Edge, and Safari.
+*/
+
+abbr:where([title]) {
+  -webkit-text-decoration: underline dotted;
+          text-decoration: underline dotted;
+}
+
+/*
+Remove the default font size and weight for headings.
+*/
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+/*
+Reset links to optimize for opt-in styling instead of opt-out.
+*/
+
+a {
+  color: inherit;
+  text-decoration: inherit;
+}
+
+/*
+Add the correct font weight in Edge and Safari.
+*/
+
+b,
+strong {
+  font-weight: bolder;
+}
+
+/*
+1. Use the user's configured `mono` font-family by default.
+2. Use the user's configured `mono` font-feature-settings by default.
+3. Use the user's configured `mono` font-variation-settings by default.
+4. Correct the odd `em` font sizing in all browsers.
+*/
+
+code,
+kbd,
+samp,
+pre {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  /* 1 */
+  font-feature-settings: normal;
+  /* 2 */
+  font-variation-settings: normal;
+  /* 3 */
+  font-size: 1em;
+  /* 4 */
+}
+
+/*
+Add the correct font size in all browsers.
+*/
+
+small {
+  font-size: 80%;
+}
+
+/*
+Prevent `sub` and `sup` elements from affecting the line height in all browsers.
+*/
+
+sub,
+sup {
+  font-size: 75%;
+  line-height: 0;
+  position: relative;
+  vertical-align: baseline;
+}
+
+sub {
+  bottom: -0.25em;
+}
+
+sup {
+  top: -0.5em;
+}
+
+/*
+1. Remove text indentation from table contents in Chrome and Safari. (https://bugs.chromium.org/p/chromium/issues/detail?id=999088, https://bugs.webkit.org/show_bug.cgi?id=201297)
+2. Correct table border color inheritance in all Chrome and Safari. (https://bugs.chromium.org/p/chromium/issues/detail?id=935729, https://bugs.webkit.org/show_bug.cgi?id=195016)
+3. Remove gaps between table borders by default.
+*/
+
+table {
+  text-indent: 0;
+  /* 1 */
+  border-color: inherit;
+  /* 2 */
+  border-collapse: collapse;
+  /* 3 */
+}
+
+/*
+1. Change the font styles in all browsers.
+2. Remove the margin in Firefox and Safari.
+3. Remove default padding in all browsers.
+*/
+
+button,
+input,
+optgroup,
+select,
+textarea {
+  font-family: inherit;
+  /* 1 */
+  font-feature-settings: inherit;
+  /* 1 */
+  font-variation-settings: inherit;
+  /* 1 */
+  font-size: 100%;
+  /* 1 */
+  font-weight: inherit;
+  /* 1 */
+  line-height: inherit;
+  /* 1 */
+  letter-spacing: inherit;
+  /* 1 */
+  color: inherit;
+  /* 1 */
+  margin: 0;
+  /* 2 */
+  padding: 0;
+  /* 3 */
+}
+
+/*
+Remove the inheritance of text transform in Edge and Firefox.
+*/
+
+button,
+select {
+  text-transform: none;
+}
+
+/*
+1. Correct the inability to style clickable types in iOS and Safari.
+2. Remove default button styles.
+*/
+
+button,
+input:where([type='button']),
+input:where([type='reset']),
+input:where([type='submit']) {
+  -webkit-appearance: button;
+  /* 1 */
+  background-color: transparent;
+  /* 2 */
+  background-image: none;
+  /* 2 */
+}
+
+/*
+Use the modern Firefox focus style for all focusable elements.
+*/
+
+:-moz-focusring {
+  outline: auto;
+}
+
+/*
+Remove the additional `:invalid` styles in Firefox. (https://github.com/mozilla/gecko-dev/blob/2f9eacd9d3d995c937b4251a5557d95d494c9be1/layout/style/res/forms.css#L728-L737)
+*/
+
+:-moz-ui-invalid {
+  box-shadow: none;
+}
+
+/*
+Add the correct vertical alignment in Chrome and Firefox.
+*/
+
+progress {
+  vertical-align: baseline;
+}
+
+/*
+Correct the cursor style of increment and decrement buttons in Safari.
+*/
+
+::-webkit-inner-spin-button,
+::-webkit-outer-spin-button {
+  height: auto;
+}
+
+/*
+1. Correct the odd appearance in Chrome and Safari.
+2. Correct the outline style in Safari.
+*/
+
+[type='search'] {
+  -webkit-appearance: textfield;
+  /* 1 */
+  outline-offset: -2px;
+  /* 2 */
+}
+
+/*
+Remove the inner padding in Chrome and Safari on macOS.
+*/
+
+::-webkit-search-decoration {
+  -webkit-appearance: none;
+}
+
+/*
+1. Correct the inability to style clickable types in iOS and Safari.
+2. Change font properties to `inherit` in Safari.
+*/
+
+::-webkit-file-upload-button {
+  -webkit-appearance: button;
+  /* 1 */
+  font: inherit;
+  /* 2 */
+}
+
+/*
+Add the correct display in Chrome and Safari.
+*/
+
+summary {
+  display: list-item;
+}
+
+/*
+Removes the default spacing and border for appropriate elements.
+*/
+
+blockquote,
+dl,
+dd,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+hr,
+figure,
+p,
+pre {
+  margin: 0;
+}
+
+fieldset {
+  margin: 0;
+  padding: 0;
+}
+
+legend {
+  padding: 0;
+}
+
+ol,
+ul,
+menu {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/*
+Reset default styling for dialogs.
+*/
+
+dialog {
+  padding: 0;
+}
+
+/*
+Prevent resizing textareas horizontally by default.
+*/
+
+textarea {
+  resize: vertical;
+}
+
+/*
+1. Reset the default placeholder opacity in Firefox. (https://github.com/tailwindlabs/tailwindcss/issues/3300)
+2. Set the default placeholder color to the user's configured gray 400 color.
+*/
+
+input::-moz-placeholder, textarea::-moz-placeholder {
+  opacity: 1;
+  /* 1 */
+  color: #9ca3af;
+  /* 2 */
+}
+
+input::placeholder,
+textarea::placeholder {
+  opacity: 1;
+  /* 1 */
+  color: #9ca3af;
+  /* 2 */
+}
+
+/*
+Set the default cursor for buttons.
+*/
+
+button,
+[role="button"] {
+  cursor: pointer;
+}
+
+/*
+Make sure disabled buttons don't get the pointer cursor.
+*/
+
+:disabled {
+  cursor: default;
+}
+
+/*
+1. Make replaced elements `display: block` by default. (https://github.com/mozdevs/cssremedy/issues/14)
+2. Add `vertical-align: middle` to align replaced elements more sensibly by default. (https://github.com/jensimmons/cssremedy/issues/14#issuecomment-634934210)
+   This can trigger a poorly considered lint error in some tools but is included by design.
+*/
+
+img,
+svg,
+video,
+canvas,
+audio,
+iframe,
+embed,
+object {
+  display: block;
+  /* 1 */
+  vertical-align: middle;
+  /* 2 */
+}
+
+/*
+Constrain images and videos to the parent width and preserve their intrinsic aspect ratio. (https://github.com/mozdevs/cssremedy/issues/14)
+*/
+
+img,
+video {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Make elements with the HTML hidden attribute stay hidden by default */
+
+[hidden]:where(:not([hidden="until-found"])) {
+  display: none;
+}
+
+html,
+  body,
+  #root {
+  margin: 0;
+  min-height: 100%;
+}
+
+html {
+  color-scheme: dark;
+  background-color: #070b14;
+  /* --bg-base: dark-first paint before React mounts (06 §1) */
+  color: #e8eef9;
+  /* --text-primary */
+}
+
+body {
+  --tw-bg-opacity: 1;
+  background-color: rgb(7 11 20 / var(--tw-bg-opacity, 1));
+  font-family: "Inter", system-ui, sans-serif;
+  --tw-text-opacity: 1;
+  color: rgb(232 238 249 / var(--tw-text-opacity, 1));
+  font-size: 14px;
+  /* 06 §2 base >= 14 */
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Tabular numerics for KPIs/axes use the mono family (06 §2) */
+
+.tabular {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.container {
+  width: 100%;
+}
+
+@media (min-width: 640px) {
+  .container {
+    max-width: 640px;
+  }
+}
+
+@media (min-width: 768px) {
+  .container {
+    max-width: 768px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .container {
+    max-width: 1024px;
+  }
+}
+
+@media (min-width: 1280px) {
+  .container {
+    max-width: 1280px;
+  }
+}
+
+@media (min-width: 1536px) {
+  .container {
+    max-width: 1536px;
+  }
+}
+
+/* Glass panel — 06 §2 Shape/Effects + §1 principle 2 */
+
+.glass-panel {
+  position: relative;
+  background: var(--bg-panel);
+  backdrop-filter: blur(var(--blur-panel));
+  -webkit-backdrop-filter: blur(var(--blur-panel));
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-panel);
+}
+
+/* Faint inner top highlight (06 §2) */
+
+.glass-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.06);
+}
+
+/* Accent glow — box-shadow at ~18% opacity (06 §2 "Glow utility") */
+
+.glow-cyan {
+  box-shadow: 0 0 24px rgba(47, 230, 255, 0.18);
+}
+
+.glow-lime {
+  box-shadow: 0 0 24px rgba(77, 255, 176, 0.18);
+}
+
+.glow-rose {
+  box-shadow: 0 0 24px rgba(255, 92, 122, 0.18);
+}
+
+/* Shimmer for skeletons (06 §5 Loading) */
+
+.shimmer {
+  background: linear-gradient(
+      90deg,
+      rgba(120, 160, 255, 0.06) 25%,
+      rgba(120, 160, 255, 0.14) 37%,
+      rgba(120, 160, 255, 0.06) 63%
+    );
+  background-size: 400% 100%;
+  animation: shimmer 1.4s ease infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+
+  100% {
+    background-position: 0 0;
+  }
+}
+
+.pointer-events-none {
+  pointer-events: none;
+}
+
+.pointer-events-auto {
+  pointer-events: auto;
+}
+
+.visible {
+  visibility: visible;
+}
+
+.collapse {
+  visibility: collapse;
+}
+
+.static {
+  position: static;
+}
+
+.fixed {
+  position: fixed;
+}
+
+.absolute {
+  position: absolute;
+}
+
+.relative {
+  position: relative;
+}
+
+.sticky {
+  position: sticky;
+}
+
+.inset-0 {
+  inset: 0px;
+}
+
+.inset-y-0 {
+  top: 0px;
+  bottom: 0px;
+}
+
+.-left-32 {
+  left: -8rem;
+}
+
+.bottom-6 {
+  bottom: 1.5rem;
+}
+
+.left-0 {
+  left: 0px;
+}
+
+.right-0 {
+  right: 0px;
+}
+
+.right-6 {
+  right: 1.5rem;
+}
+
+.top-0 {
+  top: 0px;
+}
+
+.top-1\/3 {
+  top: 33.333333%;
+}
+
+.top-20 {
+  top: 5rem;
+}
+
+.top-5 {
+  top: 1.25rem;
+}
+
+.top-full {
+  top: 100%;
+}
+
+.-z-10 {
+  z-index: -10;
+}
+
+.z-20 {
+  z-index: 20;
+}
+
+.z-50 {
+  z-index: 50;
+}
+
+.mx-auto {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.-mt-3 {
+  margin-top: -0.75rem;
+}
+
+.mb-0 {
+  margin-bottom: 0px;
+}
+
+.mb-1 {
+  margin-bottom: 0.25rem;
+}
+
+.mb-2 {
+  margin-bottom: 0.5rem;
+}
+
+.mb-3 {
+  margin-bottom: 0.75rem;
+}
+
+.mb-4 {
+  margin-bottom: 1rem;
+}
+
+.ml-1 {
+  margin-left: 0.25rem;
+}
+
+.mt-0\.5 {
+  margin-top: 0.125rem;
+}
+
+.mt-1 {
+  margin-top: 0.25rem;
+}
+
+.mt-2 {
+  margin-top: 0.5rem;
+}
+
+.mt-4 {
+  margin-top: 1rem;
+}
+
+.block {
+  display: block;
+}
+
+.inline-block {
+  display: inline-block;
+}
+
+.inline {
+  display: inline;
+}
+
+.flex {
+  display: flex;
+}
+
+.inline-flex {
+  display: inline-flex;
+}
+
+.grid {
+  display: grid;
+}
+
+.\!hidden {
+  display: none !important;
+}
+
+.hidden {
+  display: none;
+}
+
+.h-1\.5 {
+  height: 0.375rem;
+}
+
+.h-12 {
+  height: 3rem;
+}
+
+.h-14 {
+  height: 3.5rem;
+}
+
+.h-16 {
+  height: 4rem;
+}
+
+.h-2\.5 {
+  height: 0.625rem;
+}
+
+.h-3 {
+  height: 0.75rem;
+}
+
+.h-4 {
+  height: 1rem;
+}
+
+.h-6 {
+  height: 1.5rem;
+}
+
+.h-7 {
+  height: 1.75rem;
+}
+
+.h-80 {
+  height: 20rem;
+}
+
+.h-96 {
+  height: 24rem;
+}
+
+.h-\[100px\] {
+  height: 100px;
+}
+
+.h-\[132px\] {
+  height: 132px;
+}
+
+.h-\[160px\] {
+  height: 160px;
+}
+
+.h-\[180px\] {
+  height: 180px;
+}
+
+.h-\[220px\] {
+  height: 220px;
+}
+
+.h-\[320px\] {
+  height: 320px;
+}
+
+.h-\[360px\] {
+  height: 360px;
+}
+
+.h-full {
+  height: 100%;
+}
+
+.max-h-56 {
+  max-height: 14rem;
+}
+
+.min-h-\[220px\] {
+  min-height: 220px;
+}
+
+.min-h-\[240px\] {
+  min-height: 240px;
+}
+
+.min-h-\[320px\] {
+  min-height: 320px;
+}
+
+.min-h-\[380px\] {
+  min-height: 380px;
+}
+
+.min-h-\[44px\] {
+  min-height: 44px;
+}
+
+.min-h-screen {
+  min-height: 100vh;
+}
+
+.w-1\.5 {
+  width: 0.375rem;
+}
+
+.w-1\/2 {
+  width: 50%;
+}
+
+.w-2\.5 {
+  width: 0.625rem;
+}
+
+.w-32 {
+  width: 8rem;
+}
+
+.w-4 {
+  width: 1rem;
+}
+
+.w-40 {
+  width: 10rem;
+}
+
+.w-6 {
+  width: 1.5rem;
+}
+
+.w-7 {
+  width: 1.75rem;
+}
+
+.w-72 {
+  width: 18rem;
+}
+
+.w-80 {
+  width: 20rem;
+}
+
+.w-96 {
+  width: 24rem;
+}
+
+.w-\[132px\] {
+  width: 132px;
+}
+
+.w-\[220px\] {
+  width: 220px;
+}
+
+.w-full {
+  width: 100%;
+}
+
+.w-px {
+  width: 1px;
+}
+
+.min-w-0 {
+  min-width: 0px;
+}
+
+.min-w-\[200px\] {
+  min-width: 200px;
+}
+
+.min-w-\[260px\] {
+  min-width: 260px;
+}
+
+.min-w-\[44px\] {
+  min-width: 44px;
+}
+
+.max-w-screen-2xl {
+  max-width: 1536px;
+}
+
+.max-w-sm {
+  max-width: 24rem;
+}
+
+.flex-1 {
+  flex: 1 1 0%;
+}
+
+.flex-shrink-0 {
+  flex-shrink: 0;
+}
+
+.shrink-0 {
+  flex-shrink: 0;
+}
+
+.-rotate-90 {
+  --tw-rotate: -90deg;
+  transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
+}
+
+.transform {
+  transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
+}
+
+.animate-\[drift1_22s_ease-in-out_infinite\] {
+  animation: drift1 22s ease-in-out infinite;
+}
+
+.animate-\[drift2_28s_ease-in-out_infinite\] {
+  animation: drift2 28s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  50% {
+    opacity: .5;
+  }
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+.cursor-pointer {
+  cursor: pointer;
+}
+
+.select-none {
+  -webkit-user-select: none;
+     -moz-user-select: none;
+          user-select: none;
+}
+
+.grid-cols-1 {
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+}
+
+.grid-cols-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.grid-cols-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.flex-row {
+  flex-direction: row;
+}
+
+.flex-col {
+  flex-direction: column;
+}
+
+.flex-wrap {
+  flex-wrap: wrap;
+}
+
+.items-start {
+  align-items: flex-start;
+}
+
+.items-center {
+  align-items: center;
+}
+
+.items-stretch {
+  align-items: stretch;
+}
+
+.justify-end {
+  justify-content: flex-end;
+}
+
+.justify-center {
+  justify-content: center;
+}
+
+.justify-between {
+  justify-content: space-between;
+}
+
+.justify-around {
+  justify-content: space-around;
+}
+
+.gap-1 {
+  gap: 0.25rem;
+}
+
+.gap-1\.5 {
+  gap: 0.375rem;
+}
+
+.gap-2 {
+  gap: 0.5rem;
+}
+
+.gap-2\.5 {
+  gap: 0.625rem;
+}
+
+.gap-3 {
+  gap: 0.75rem;
+}
+
+.gap-4 {
+  gap: 1rem;
+}
+
+.gap-6 {
+  gap: 1.5rem;
+}
+
+.gap-\[5px\] {
+  gap: 5px;
+}
+
+.self-stretch {
+  align-self: stretch;
+}
+
+.overflow-hidden {
+  overflow: hidden;
+}
+
+.overflow-y-auto {
+  overflow-y: auto;
+}
+
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rounded {
+  border-radius: 0.25rem;
+}
+
+.rounded-\[10px\] {
+  border-radius: 10px;
+}
+
+.rounded-\[12px\] {
+  border-radius: 12px;
+}
+
+.rounded-\[14px\] {
+  border-radius: 14px;
+}
+
+.rounded-card {
+  border-radius: 14px;
+}
+
+.rounded-chip {
+  border-radius: 9999px;
+}
+
+.rounded-full {
+  border-radius: 9999px;
+}
+
+.rounded-lg {
+  border-radius: 0.5rem;
+}
+
+.rounded-l-full {
+  border-top-left-radius: 9999px;
+  border-bottom-left-radius: 9999px;
+}
+
+.rounded-r-full {
+  border-top-right-radius: 9999px;
+  border-bottom-right-radius: 9999px;
+}
+
+.border {
+  border-width: 1px;
+}
+
+.border-b {
+  border-bottom-width: 1px;
+}
+
+.border-\[var\(--border-glass\)\] {
+  border-color: var(--border-glass);
+}
+
+.border-accent-cyan {
+  --tw-border-opacity: 1;
+  border-color: rgb(47 230 255 / var(--tw-border-opacity, 1));
+}
+
+.border-accent-cyan\/50 {
+  border-color: rgb(47 230 255 / 0.5);
+}
+
+.border-accent-lime\/50 {
+  border-color: rgb(77 255 176 / 0.5);
+}
+
+.border-accent-rose\/50 {
+  border-color: rgb(255 92 122 / 0.5);
+}
+
+.border-accent-violet\/40 {
+  border-color: rgb(139 92 255 / 0.4);
+}
+
+.border-border-glass {
+  border-color: rgba(120, 160, 255, 0.12);
+}
+
+.bg-\[var\(--bg-panel-solid\)\] {
+  background-color: var(--bg-panel-solid);
+}
+
+.bg-accent-cyan\/10 {
+  background-color: rgb(47 230 255 / 0.1);
+}
+
+.bg-accent-cyan\/15 {
+  background-color: rgb(47 230 255 / 0.15);
+}
+
+.bg-accent-cyan\/20 {
+  background-color: rgb(47 230 255 / 0.2);
+}
+
+.bg-accent-cyan\/5 {
+  background-color: rgb(47 230 255 / 0.05);
+}
+
+.bg-accent-violet\/10 {
+  background-color: rgb(139 92 255 / 0.1);
+}
+
+.bg-accent-violet\/15 {
+  background-color: rgb(139 92 255 / 0.15);
+}
+
+.bg-base {
+  --tw-bg-opacity: 1;
+  background-color: rgb(7 11 20 / var(--tw-bg-opacity, 1));
+}
+
+.bg-panel {
+  background-color: rgba(18, 26, 44, 0.62);
+}
+
+.bg-panel-solid {
+  --tw-bg-opacity: 1;
+  background-color: rgb(14 22 38 / var(--tw-bg-opacity, 1));
+}
+
+.bg-panel-solid\/40 {
+  background-color: rgb(14 22 38 / 0.4);
+}
+
+.bg-transparent {
+  background-color: transparent;
+}
+
+.p-1 {
+  padding: 0.25rem;
+}
+
+.p-4 {
+  padding: 1rem;
+}
+
+.p-5 {
+  padding: 1.25rem;
+}
+
+.px-1 {
+  padding-left: 0.25rem;
+  padding-right: 0.25rem;
+}
+
+.px-2 {
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+}
+
+.px-2\.5 {
+  padding-left: 0.625rem;
+  padding-right: 0.625rem;
+}
+
+.px-3 {
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
+}
+
+.px-4 {
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+.px-5 {
+  padding-left: 1.25rem;
+  padding-right: 1.25rem;
+}
+
+.py-0 {
+  padding-top: 0px;
+  padding-bottom: 0px;
+}
+
+.py-1 {
+  padding-top: 0.25rem;
+  padding-bottom: 0.25rem;
+}
+
+.py-1\.5 {
+  padding-top: 0.375rem;
+  padding-bottom: 0.375rem;
+}
+
+.py-2 {
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+
+.py-2\.5 {
+  padding-top: 0.625rem;
+  padding-bottom: 0.625rem;
+}
+
+.py-3 {
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+}
+
+.py-4 {
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+}
+
+.py-5 {
+  padding-top: 1.25rem;
+  padding-bottom: 1.25rem;
+}
+
+.py-6 {
+  padding-top: 1.5rem;
+  padding-bottom: 1.5rem;
+}
+
+.py-\[10px\] {
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.font-display {
+  font-family: "Space Grotesk", system-ui, sans-serif;
+}
+
+.font-mono {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+}
+
+.font-sans {
+  font-family: "Inter", system-ui, sans-serif;
+}
+
+.text-\[10px\] {
+  font-size: 10px;
+}
+
+.text-\[11px\] {
+  font-size: 11px;
+}
+
+.text-\[12px\] {
+  font-size: 12px;
+}
+
+.text-\[13px\] {
+  font-size: 13px;
+}
+
+.text-\[14px\] {
+  font-size: 14px;
+}
+
+.text-body {
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.text-caption {
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.text-h1 {
+  font-size: 24px;
+  line-height: 1.2;
+  font-weight: 600;
+}
+
+.text-h2 {
+  font-size: 18px;
+  line-height: 1.3;
+  font-weight: 600;
+}
+
+.font-\[JetBrains_Mono\] {
+  font-weight: JetBrains Mono;
+}
+
+.font-medium {
+  font-weight: 500;
+}
+
+.font-semibold {
+  font-weight: 600;
+}
+
+.uppercase {
+  text-transform: uppercase;
+}
+
+.tabular-nums {
+  --tw-numeric-spacing: tabular-nums;
+  font-variant-numeric: var(--tw-ordinal) var(--tw-slashed-zero) var(--tw-numeric-figure) var(--tw-numeric-spacing) var(--tw-numeric-fraction);
+}
+
+.leading-none {
+  line-height: 1;
+}
+
+.leading-snug {
+  line-height: 1.375;
+}
+
+.tracking-widest {
+  letter-spacing: 0.1em;
+}
+
+.text-\[var\(--text-muted\)\] {
+  color: var(--text-muted);
+}
+
+.text-\[var\(--text-primary\)\] {
+  color: var(--text-primary);
+}
+
+.text-accent-cyan {
+  --tw-text-opacity: 1;
+  color: rgb(47 230 255 / var(--tw-text-opacity, 1));
+}
+
+.text-accent-lime {
+  --tw-text-opacity: 1;
+  color: rgb(77 255 176 / var(--tw-text-opacity, 1));
+}
+
+.text-accent-rose {
+  --tw-text-opacity: 1;
+  color: rgb(255 92 122 / var(--tw-text-opacity, 1));
+}
+
+.text-accent-violet {
+  --tw-text-opacity: 1;
+  color: rgb(139 92 255 / var(--tw-text-opacity, 1));
+}
+
+.text-text-muted {
+  --tw-text-opacity: 1;
+  color: rgb(138 151 178 / var(--tw-text-opacity, 1));
+}
+
+.text-text-primary {
+  --tw-text-opacity: 1;
+  color: rgb(232 238 249 / var(--tw-text-opacity, 1));
+}
+
+.text-transparent {
+  color: transparent;
+}
+
+.opacity-100 {
+  opacity: 1;
+}
+
+.opacity-40 {
+  opacity: 0.4;
+}
+
+.opacity-50 {
+  opacity: 0.5;
+}
+
+.opacity-70 {
+  opacity: 0.7;
+}
+
+.shadow-\[0_8px_40px_rgba\(0\2c 0\2c 0\2c 0\.45\)\] {
+  --tw-shadow: 0 8px 40px rgba(0,0,0,0.45);
+  --tw-shadow-colored: 0 8px 40px var(--tw-shadow-color);
+  box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
+}
+
+.shadow-panel {
+  --tw-shadow: 0 8px 40px rgba(0, 0, 0, 0.45);
+  --tw-shadow-colored: 0 8px 40px var(--tw-shadow-color);
+  box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
+}
+
+.shadow-xl {
+  --tw-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --tw-shadow-colored: 0 20px 25px -5px var(--tw-shadow-color), 0 8px 10px -6px var(--tw-shadow-color);
+  box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
+}
+
+.shadow-panel {
+  --tw-shadow-color: rgba(18, 26, 44, 0.62);
+  --tw-shadow: var(--tw-shadow-colored);
+}
+
+.outline-none {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+}
+
+.ring {
+  --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);
+  --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(3px + var(--tw-ring-offset-width)) var(--tw-ring-color);
+  box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000);
+}
+
+.blur {
+  --tw-blur: blur(8px);
+  filter: var(--tw-blur) var(--tw-brightness) var(--tw-contrast) var(--tw-grayscale) var(--tw-hue-rotate) var(--tw-invert) var(--tw-saturate) var(--tw-sepia) var(--tw-drop-shadow);
+}
+
+.blur-3xl {
+  --tw-blur: blur(64px);
+  filter: var(--tw-blur) var(--tw-brightness) var(--tw-contrast) var(--tw-grayscale) var(--tw-hue-rotate) var(--tw-invert) var(--tw-saturate) var(--tw-sepia) var(--tw-drop-shadow);
+}
+
+.drop-shadow {
+  --tw-drop-shadow: drop-shadow(0 1px 2px rgb(0 0 0 / 0.1)) drop-shadow(0 1px 1px rgb(0 0 0 / 0.06));
+  filter: var(--tw-blur) var(--tw-brightness) var(--tw-contrast) var(--tw-grayscale) var(--tw-hue-rotate) var(--tw-invert) var(--tw-saturate) var(--tw-sepia) var(--tw-drop-shadow);
+}
+
+.filter {
+  filter: var(--tw-blur) var(--tw-brightness) var(--tw-contrast) var(--tw-grayscale) var(--tw-hue-rotate) var(--tw-invert) var(--tw-saturate) var(--tw-sepia) var(--tw-drop-shadow);
+}
+
+.transition {
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+
+.transition-colors {
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+
+.transition-opacity {
+  transition-property: opacity;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+
+.transition-shadow {
+  transition-property: box-shadow;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+
+@keyframes drift1 {
+  0%,
+    100% {
+    transform: translate(0, 0);
+  }
+
+  50%  {
+    transform: translate(60px, 40px);
+  }
+}
+
+@keyframes drift2 {
+  0%,
+    100% {
+    transform: translate(0, 0);
+  }
+
+  50%  {
+    transform: translate(-50px, -30px);
+  }
+}
+
+.\[color-scheme\:dark\] {
+  color-scheme: dark;
+}
+
+/* tokens.css (MT-30) is imported in main.tsx once it exists. */
+
+@media (prefers-reduced-motion: reduce) {
+  .shimmer {
+    animation: none;
+  }
+}
+
+/* MT-43 / MT-32 — animated background keyframes (06 §3).
+   Blobs drift slowly; frozen by the global prefers-reduced-motion rule above. */
+
+.placeholder\:text-text-muted::-moz-placeholder {
+  --tw-text-opacity: 1;
+  color: rgb(138 151 178 / var(--tw-text-opacity, 1));
+}
+
+.placeholder\:text-text-muted::placeholder {
+  --tw-text-opacity: 1;
+  color: rgb(138 151 178 / var(--tw-text-opacity, 1));
+}
+
+.hover\:border-accent-cyan\/50:hover {
+  border-color: rgb(47 230 255 / 0.5);
+}
+
+.hover\:bg-accent-cyan\/10:hover {
+  background-color: rgb(47 230 255 / 0.1);
+}
+
+.hover\:bg-accent-cyan\/25:hover {
+  background-color: rgb(47 230 255 / 0.25);
+}
+
+.hover\:bg-accent-violet\/25:hover {
+  background-color: rgb(139 92 255 / 0.25);
+}
+
+.hover\:bg-panel:hover {
+  background-color: rgba(18, 26, 44, 0.62);
+}
+
+.hover\:bg-white\/10:hover {
+  background-color: rgb(255 255 255 / 0.1);
+}
+
+.hover\:bg-white\/\[0\.03\]:hover {
+  background-color: rgb(255 255 255 / 0.03);
+}
+
+.hover\:text-accent-cyan:hover {
+  --tw-text-opacity: 1;
+  color: rgb(47 230 255 / var(--tw-text-opacity, 1));
+}
+
+.hover\:text-text-primary:hover {
+  --tw-text-opacity: 1;
+  color: rgb(232 238 249 / var(--tw-text-opacity, 1));
+}
+
+.hover\:text-white:hover {
+  --tw-text-opacity: 1;
+  color: rgb(255 255 255 / var(--tw-text-opacity, 1));
+}
+
+.hover\:underline:hover {
+  text-decoration-line: underline;
+}
+
+.hover\:shadow-\[0_0_18px_rgba\(47\2c 230\2c 255\2c 0\.18\)\]:hover {
+  --tw-shadow: 0 0 18px rgba(47,230,255,0.18);
+  --tw-shadow-colored: 0 0 18px var(--tw-shadow-color);
+  box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
+}
+
+.focus\:outline-none:focus {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+}
+
+.focus\:ring-2:focus {
+  --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);
+  --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color);
+  box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000);
+}
+
+.focus\:ring-accent-cyan\/60:focus {
+  --tw-ring-color: rgb(47 230 255 / 0.6);
+}
+
+.focus-visible\:bg-panel:focus-visible {
+  background-color: rgba(18, 26, 44, 0.62);
+}
+
+.focus-visible\:outline-none:focus-visible {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+}
+
+.focus-visible\:ring-1:focus-visible {
+  --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);
+  --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(1px + var(--tw-ring-offset-width)) var(--tw-ring-color);
+  box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000);
+}
+
+.focus-visible\:ring-2:focus-visible {
+  --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);
+  --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color);
+  box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000);
+}
+
+.focus-visible\:ring-\[var\(--accent-cyan\)\]:focus-visible {
+  --tw-ring-color: var(--accent-cyan);
+}
+
+.focus-visible\:ring-accent-cyan:focus-visible {
+  --tw-ring-opacity: 1;
+  --tw-ring-color: rgb(47 230 255 / var(--tw-ring-opacity, 1));
+}
+
+.focus-visible\:ring-accent-cyan\/60:focus-visible {
+  --tw-ring-color: rgb(47 230 255 / 0.6);
+}
+
+.focus-visible\:ring-offset-1:focus-visible {
+  --tw-ring-offset-width: 1px;
+}
+
+.focus-visible\:ring-offset-2:focus-visible {
+  --tw-ring-offset-width: 2px;
+}
+
+.focus-visible\:ring-offset-base:focus-visible {
+  --tw-ring-offset-color: #070B14;
+}
+
+.disabled\:cursor-not-allowed:disabled {
+  cursor: not-allowed;
+}
+
+.disabled\:opacity-40:disabled {
+  opacity: 0.4;
+}
+
+.disabled\:opacity-50:disabled {
+  opacity: 0.5;
+}
+
+@media (min-width: 640px) {
+  .sm\:static {
+    position: static;
+  }
+
+  .sm\:inset-auto {
+    inset: auto;
+  }
+
+  .sm\:block {
+    display: block;
+  }
+
+  .sm\:h-full {
+    height: 100%;
+  }
+
+  .sm\:min-h-0 {
+    min-height: 0px;
+  }
+
+  .sm\:min-h-\[24px\] {
+    min-height: 24px;
+  }
+
+  .sm\:min-h-\[28px\] {
+    min-height: 28px;
+  }
+
+  .sm\:w-\[380px\] {
+    width: 380px;
+  }
+
+  .sm\:w-auto {
+    width: auto;
+  }
+
+  .sm\:min-w-0 {
+    min-width: 0px;
+  }
+
+  .sm\:min-w-\[140px\] {
+    min-width: 140px;
+  }
+
+  .sm\:min-w-\[200px\] {
+    min-width: 200px;
+  }
+
+  .sm\:min-w-\[28px\] {
+    min-width: 28px;
+  }
+
+  .sm\:flex-1 {
+    flex: 1 1 0%;
+  }
+
+  .sm\:shrink-0 {
+    flex-shrink: 0;
+  }
+
+  .sm\:grid-cols-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .sm\:flex-row {
+    flex-direction: row;
+  }
+
+  .sm\:items-center {
+    align-items: center;
+  }
+
+  .sm\:justify-between {
+    justify-content: space-between;
+  }
+
+  .sm\:gap-4 {
+    gap: 1rem;
+  }
+
+  .sm\:gap-8 {
+    gap: 2rem;
+  }
+
+  .sm\:px-0 {
+    padding-left: 0px;
+    padding-right: 0px;
+  }
+
+  .sm\:px-5 {
+    padding-left: 1.25rem;
+    padding-right: 1.25rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .lg\:px-6 {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+
+  .lg\:py-6 {
+    padding-top: 1.5rem;
+    padding-bottom: 1.5rem;
+  }
+}
+
+@media (min-width: 1280px) {
+  .xl\:col-span-12 {
+    grid-column: span 12 / span 12;
+  }
+
+  .xl\:col-span-4 {
+    grid-column: span 4 / span 4;
+  }
+
+  .xl\:col-span-6 {
+    grid-column: span 6 / span 6;
+  }
+
+  .xl\:col-span-8 {
+    grid-column: span 8 / span 8;
+  }
+
+  .xl\:w-\[280px\] {
+    width: 280px;
+  }
+
+  .xl\:w-\[300px\] {
+    width: 300px;
+  }
+
+  .xl\:grid-cols-12 {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+  }
+
+  .xl\:grid-cols-4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .xl\:flex-row {
+    flex-direction: row;
+  }
+
+  .xl\:gap-6 {
+    gap: 1.5rem;
+  }
+}
+
+@media (min-width: 640px) {
+  .\[\&\.control-bar\]\:sm\:min-h-\[60px\].control-bar {
+    min-height: 60px;
+  }
+}

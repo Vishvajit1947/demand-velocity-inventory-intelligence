@@ -115,6 +115,7 @@ export function ForecastResult({
               <button
                 type="button"
                 onClick={() => handleToggle("normalized")}
+                className="min-h-[44px] sm:min-h-0"
                 style={{
                   padding: "3px 12px",
                   background:
@@ -131,6 +132,7 @@ export function ForecastResult({
               <button
                 type="button"
                 onClick={() => handleToggle("absolute")}
+                className="min-h-[44px] sm:min-h-0"
                 style={{
                   padding: "3px 12px",
                   background:
@@ -585,6 +587,8 @@ function LegendItem({ color, label, dimmed, onClick }: LegendItemProps) {
       className={[
         "flex items-center gap-2 text-caption transition-opacity focus:outline-none",
         "focus-visible:ring-1 focus-visible:ring-[var(--accent-cyan)] rounded",
+        /* Mobile touch target — min-h-[44px] with horizontal padding; desktop unchanged */
+        "min-h-[44px] px-1 sm:min-h-0 sm:px-0",
         dimmed ? "opacity-40" : "opacity-100",
       ].join(" ")}
     >

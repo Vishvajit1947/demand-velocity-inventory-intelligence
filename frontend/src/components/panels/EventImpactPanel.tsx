@@ -69,7 +69,7 @@ export function EventImpactPanel({ result, loading = false }: EventImpactPanelPr
             totalEvents > 0 ? (
               <Button
                 variant="ghost"
-                className="h-6 px-2 py-0 text-[11px]"
+                className="h-6 px-2 py-0 text-[11px] min-h-[44px] sm:min-h-[24px]"
                 onClick={() => setDrawerOpen(true)}
                 aria-haspopup="dialog"
               >
@@ -119,6 +119,31 @@ function EventImpactContent({
   const reduce = useReducedMotion();
   const { event_uplift } = result;
 
+  // Measure chart container width to switch between mobile/desktop chart geometry.
+  // Same ResizeObserver pattern used by InventoryRiskPanel.
+  const chartContainerRef = useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = useState(0);
+  useEffect(() => {
+    const el = chartContainerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([entry]) => {
+      setContainerWidth(entry.contentRect.width);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  // Mobile threshold matches the sm: Tailwind breakpoint (640px).
+  // Below it: narrower YAxis (75px) and smaller right margin (32px) to give
+  // bars more horizontal room. Desktop: original 110px / 56px unchanged.
+  const isMobile = containerWidth > 0 && containerWidth < 640;
+  const yAxisWidth  = isMobile ? 75  : 110;
+  const chartMargin = isMobile
+    ? { top: 14, right: 32, bottom: 14, left: 8 }
+    : { top: 14, right: 56, bottom: 14, left: 8 };
+  // Font size for YAxis tick labels: 11px on mobile (readability floor), 12px on desktop.
+  const yAxisFontSize = isMobile ? 11 : 12;
+
   // All events sorted by absolute uplift descending
   const allRows = useMemo<UpliftRow[]>(
     () =>
@@ -142,6 +167,7 @@ function EventImpactContent({
         </p>
       ) : (
         <div
+          ref={chartContainerRef}
           className="flex flex-1 items-center"
           style={{ width: "100%", minHeight: 0 }}
           data-testid="event-uplift-chart"
@@ -153,7 +179,7 @@ function EventImpactContent({
                 data={rows}
                 barSize={22}
                 barCategoryGap={22}
-                margin={{ top: 14, right: 56, bottom: 14, left: 8 }}
+                margin={chartMargin}
               >
                 <CartesianGrid horizontal={false} stroke={GRID} />
                 <XAxis
@@ -165,8 +191,8 @@ function EventImpactContent({
                 <YAxis
                   type="category"
                   dataKey="name"
-                  width={110}
-                  tick={{ fill: "#E8EEF9", fontFamily: "Inter, sans-serif", fontSize: 12 }}
+                  width={yAxisWidth}
+                  tick={{ fill: "#E8EEF9", fontFamily: "Inter, sans-serif", fontSize: yAxisFontSize }}
                   stroke={GRID}
                   tickMargin={6}
                 />
@@ -274,21 +300,38 @@ function AllEventsDrawer({ rows, onClose }: AllEventsDrawerProps) {
       onClick={handleBackdropClick}
       role="presentation"
     >
-      {/* Drawer panel */}
+      {/*
+       * Drawer panel.
+       *
+       * Mobile  (< sm): full-screen — inset-0 so it fills the entire viewport.
+       *   border-left is hidden since there's nothing to the left of a full-screen sheet.
+       * Desktop (≥ sm): right-side panel, fixed 380 px width, borderLeft restored.
+       *
+       * Both: background, boxShadow, and all inner layout are unchanged.
+       */}
       <div
         ref={drawerRef}
         role="dialog"
         aria-modal="true"
         aria-label="All Events"
-        className="flex flex-col"
+        className={[
+          "flex flex-col",
+          /* Mobile: fill viewport */
+          "fixed inset-0",
+          /* sm+: right-side drawer, 380 px */
+          "sm:static sm:inset-auto sm:w-[380px] sm:h-full",
+        ].join(" ")}
         style={{
-          width: 380,
-          height: "100%",
           background: "#0E1626",
-          borderLeft: "1px solid rgba(120,160,255,0.12)",
           boxShadow: "-8px 0 32px rgba(0,0,0,0.5)",
         }}
       >
+        {/* Border-left only on sm+ (hidden in full-screen mobile mode) */}
+        <div
+          className="hidden sm:block absolute inset-y-0 left-0 w-px pointer-events-none"
+          style={{ background: "rgba(120,160,255,0.12)" }}
+          aria-hidden
+        />
         {/* Drawer header */}
         <div
           className="flex items-center justify-between px-5 py-4"
@@ -308,7 +351,7 @@ function AllEventsDrawer({ rows, onClose }: AllEventsDrawerProps) {
           <button
             onClick={onClose}
             aria-label="Close drawer"
-            className="flex h-7 w-7 items-center justify-center rounded-full transition-colors hover:bg-white/10"
+            className="flex h-7 w-7 items-center justify-center rounded-full transition-colors hover:bg-white/10 min-h-[44px] min-w-[44px] sm:min-h-[28px] sm:min-w-[28px]"
             style={{ color: MUTED }}
           >
             <X size={15} />

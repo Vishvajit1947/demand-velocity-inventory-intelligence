@@ -61,7 +61,10 @@ export function InventoryRiskPanel({ result, loading = false }: InventoryRiskPan
     <GlassPanel animate={false}>
       <div className="flex h-full flex-col gap-3" data-testid="inventory-risk-panel">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          {/* Mobile: allow the badge to wrap below the title when there isn't
+               enough horizontal room, rather than overflowing or squeezing.
+               Desktop: single-row layout unchanged (gap-2 provides adequate spacing). */}
+          <div className="flex flex-wrap items-center gap-2">
             <SectionTitle title="Inventory Risk" className="mb-0" />
             <span
               style={{
