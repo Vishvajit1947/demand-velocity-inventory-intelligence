@@ -4,7 +4,6 @@
 
 A dark-theme retail analytics dashboard that forecasts **28 days of daily demand** for **8 grocery products** using a pre-trained **LightGBM** model on the Walmart M5 dataset. Select a start date and up to 8 products, hit **Forecast**, and get predicted vs. actual demand alongside actionable inventory recommendations — all across 8 animated panels.
 
-![Dashboard screenshot](docs/screenshot.png)
 
 ---
 
