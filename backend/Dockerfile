@@ -43,8 +43,6 @@ COPY data/raw/calendar.csv               /app/data/raw/calendar.csv
 
 EXPOSE 8000
 
-# 2 workers: one handles a forecast (CPU-bound, ~5-6 s) while the other
-# answers health checks and incoming requests concurrently.
-# Keep to 2 on Railway's free tier (512 MB RAM); raise to 4 on paid plans.
-# Railway injects $PORT at runtime; fall back to 8000 for local docker run.
-CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1
+# Shell form so Railway's injected $PORT env var is expanded at runtime.
+# Falls back to 8000 for local docker run.
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1"]
