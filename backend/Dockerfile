@@ -46,4 +46,5 @@ EXPOSE 8000
 # 2 workers: one handles a forecast (CPU-bound, ~5-6 s) while the other
 # answers health checks and incoming requests concurrently.
 # Keep to 2 on Railway's free tier (512 MB RAM); raise to 4 on paid plans.
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]
+# Railway injects $PORT at runtime; fall back to 8000 for local docker run.
+CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1
